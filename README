@@ -4,5 +4,5 @@ FALK MEYER, 05.02.2015
 
 THIS FILE IS INTENDED TO PRESENT THE BASIC STRUCTURE 
 
-matrix.py: provides NumpyMatrixOperator built from matlab/numpy input 
+input.py: provides input possibilities  
 main.py: main routines and application of pymor algorithms to use RB on comsol model

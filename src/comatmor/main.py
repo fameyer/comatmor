@@ -13,54 +13,39 @@ from pymor.discretizations.basic import StationaryDiscretization
 from input import getMatrix
 
 
-
-def main( matrixDict = None ):
+# Build class to catch all necessary matrices
+def main( row=None, col=None, data=None ):
 	"""
 	Doc me
 	"""
-	# get input matrices
-	MatDic = getMatrix()
-	print MatDic
+	if row == None:
+		# get input matrices
+		MatDic = getMatrix()
+		print MatDic
 
-	# for any given matrix create a NumpyMatrixOperator in a dict
-	OperatorDic = {} 
-	for key in MatDic:
-		print 'Transform '+key+' into an operator...' 
-		OperatorDic[key] = NumpyMatrixOperator(MatDic[key])
-	print OperatorDic
+		# for any given matrix create a NumpyMatrixOperator in a dict
+		OperatorDic = {} 
+		for key in MatDic:
+			print 'Transform '+key+' into an operator...' 
+			OperatorDic[key] = NumpyMatrixOperator(MatDic[key])
+		print OperatorDic
 
-	# CREATE LINCOMBOPERATOR
+		# CREATE LINCOMBOPERATOR
 
-	# make it for a stationary case for example
-	rhs = NumpyMatrixOperator(np.ones(1217))	
-	for key in OperatorDic:
-		stat = StationaryDiscretization(operator=OperatorDic[key],rhs=rhs)
-		print stat.solve()
+		# make it for a stationary case for example
+		rhs = NumpyMatrixOperator(np.ones(1217))	
+		for key in OperatorDic:
+			stat = StationaryDiscretization(operator=OperatorDic[key],rhs=rhs)
+			print stat.solve()
 	 
 	#=====================================
 	# The other way around
 
 	# transform matrix
 	# get input matrices
-	MatDic = getMatrix(type='direct', matrixDict=matrixDict)
+	MatDic = getMatrix(type='direct', row=row, col=col, data=data)
 	print MatDic
-
-	# for any given matrix create a NumpyMatrixOperator in a dict
-	OperatorDic = {} 
-	for key in MatDic:
-		print 'Transform '+key+' into an operator...' 
-		OperatorDic[key] = NumpyMatrixOperator(MatDic[key])
-	print OperatorDic
-
-	# CREATE LINCOMBOPERATOR
-
-	# make it for a stationary case for example
-	rhs = NumpyMatrixOperator(np.ones(1217))	
-	for key in OperatorDic:
-		stat = StationaryDiscretization(operator=OperatorDic[key],rhs=rhs)
-		print stat.solve()
 		
-
 
 if __name__ == '__main__':
 	main()

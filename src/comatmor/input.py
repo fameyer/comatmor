@@ -3,12 +3,14 @@
 
 # Import methods to read sparse .mat files from matlab
 from scipy import sparse, io
+# column sparse matrix
+from scipy.sparse import csc_matrix
 
 # Import parameters (FIND NICER WAYS TO DO SO)
 import parameter
 
 # MAYBE MAKE A WHOLE INPUT CLASS INCLUDING A DECOMPOSER?
-def getMatrix(type='disc', matrixDict = None):
+def getMatrix(type='disc', row=None, col=None, data=None):
 	"""
 	DOC ME
 	"""
@@ -21,9 +23,13 @@ def getMatrix(type='disc', matrixDict = None):
 		# DECOMPOSER here?
 		# dic stores name and state of a matrix
 		return dic
+
+	# Generate sparse column matrix 
 	if type == 'direct':
 		dic = {}
-		
-
+		print 'Mmh?'
+		#print data
+		A = csc_matrix((data[1:],(row[1:],col[1:])),shape=(len(data[1:]),len(data[1:])))
+		return A		
 	else:
 		pass

@@ -14,7 +14,7 @@ from input import getMatrix
 
 
 
-def main():
+def main( matrixDict = None ):
 	"""
 	Doc me
 	"""
@@ -37,6 +37,30 @@ def main():
 		stat = StationaryDiscretization(operator=OperatorDic[key],rhs=rhs)
 		print stat.solve()
 	 
-	
+	#=====================================
+	# The other way around
+
+	# transform matrix
+	# get input matrices
+	MatDic = getMatrix(type='direct', matrixDict=matrixDict)
+	print MatDic
+
+	# for any given matrix create a NumpyMatrixOperator in a dict
+	OperatorDic = {} 
+	for key in MatDic:
+		print 'Transform '+key+' into an operator...' 
+		OperatorDic[key] = NumpyMatrixOperator(MatDic[key])
+	print OperatorDic
+
+	# CREATE LINCOMBOPERATOR
+
+	# make it for a stationary case for example
+	rhs = NumpyMatrixOperator(np.ones(1217))	
+	for key in OperatorDic:
+		stat = StationaryDiscretization(operator=OperatorDic[key],rhs=rhs)
+		print stat.solve()
+		
+
+
 if __name__ == '__main__':
 	main()

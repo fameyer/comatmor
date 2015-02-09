@@ -21,3 +21,9 @@ def getMatrix(type='disc', matrixDict = None):
 		# DECOMPOSER here?
 		# dic stores name and state of a matrix
 		return dic
+	if type == 'direct':
+		dic = {}
+		
+
+	else:
+		pass

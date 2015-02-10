@@ -1,6 +1,6 @@
 # module includes
-import input
-import main
-import parameter
+from comminterface import comminterface
+from stationRB import stationRB
 
-print "Loading comatmor..."
+print "Loading comatmor version 0.0.1"
+

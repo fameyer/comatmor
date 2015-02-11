@@ -5,6 +5,9 @@ import numpy as np
 
 from functools import partial
 
+# for debugging
+#import pdb
+
 # pymor includes
 from pymor.operators.constructions import LincombOperator
 from pymor.operators.numpy import NumpyMatrixOperator
@@ -40,6 +43,10 @@ class stationRB(object):
 		self._matDict = None
 		# RB-basis
 		self._rb = None
+		# RB discretization
+		self._rd = None
+		# RB reconstructor
+		self._rc = None
 
 	def addMatrix(self, name, row, col, data, paramName=None, paramValue=None, paramSpace=None, training_set=None):
 		"""
@@ -62,6 +69,11 @@ class stationRB(object):
 		assert isinstance(rhs, np.ndarray)
 		self._rhs = NumpyMatrixOperator(rhs)
 
+	def getRhs(self):
+		"""
+		DOC ME
+		"""
+		return self._rhs
 
 	def constructRB(self):
 		"""
@@ -96,8 +108,26 @@ class stationRB(object):
 	 	reductor = partial(reduce_stationary_affine_linear, error_product = None)
 
 		# greedy search to construct RB 		
-		self._rb = greedy(dis, reductor, paramSpace.sample_uniformly(10), use_estimator=True, extension_algorithm=trivial_basis_extension, max_extensions = 10)
+		self._rb = greedy(dis, reductor, paramSpace.sample_uniformly(10), use_estimator=True, extension_algorithm=trivial_basis_extension, target_error=1e-10, max_extensions = 10) 
 
+		# get the reduced discretization and the reconstructor
+		self._rd, self._rc = self._rb['reduced_discretization'], self._rb['reconstructor']
+
+	def compute(self, training_set=None, error=False):
+		"""
+		Think about error estimators and parameters etc etc
+		Compute rb solutions for training set - with errors?
+		"""
+		# assert right set structure
+		assert isinstance(training_set,np.ndarray) or isinstance(training_set, list)
+
+		# just supports return of one solution so far!!! Due to matlab restrictions
+		for mu in training_set:
+			u = self._rd.solve(mu)
+			ur = self._rc.reconstruct(u)
+
+		print ur
+		return ur	
 
 	def getRB(self):
 		"""

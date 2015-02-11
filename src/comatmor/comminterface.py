@@ -43,7 +43,7 @@ class comminterface(object):
 			matrix = csc_matrix((data,(row,col)),shape=(dim,dim))
 
 			# create parameterfunctional
-			paramType = Parameter({ paramName: np.array([paramValue])})
+			paramType = Parameter({ paramName: np.array(paramValue)})
 			paramFunc = GenericParameterFunctional(lambda mu: mu[paramName], parameter_type = paramType)
 
 			# decompose matrix comes together with above line later on

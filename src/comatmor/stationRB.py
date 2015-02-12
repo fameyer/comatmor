@@ -37,7 +37,7 @@ class stationRB(object):
 		self._name = name
 		self._type = inputmethod
 		# communication interface
-		self._CI = CI()
+		self._CI = CI(type = self._type)
 		# mathematical objects
 		self._rhs = None
 		self._matDict = None
@@ -48,26 +48,31 @@ class stationRB(object):
 		# RB reconstructor
 		self._rc = None
 
-	def addMatrix(self, name, row, col, data, paramName=None, paramValue=None, paramSpace=None, training_set=None):
+	def addMatrix(self, name=None, row=None, col=None, data=None, paramName=None, paramValue=None, paramSpace=None):
 		"""
 		paramSpace = [1,2] for intervall so to speak, even discrete or continuous
 		"""
 		# just call comminterface
-		self._CI.pushMat(name, row, col, data, paramName, paramValue, paramSpace, training_set)
+		self._CI.pushMat(name, row, col, data, paramName, paramValue, paramSpace)
 		self._matDict = self._CI.getMat()
+
 	def getMatrix(self):
 		"""
 		Namen umbenennen vermoege besseren Wissens!
 		"""
 		return self._CI.getMat()
 
-	def addRhs(self, rhs):
+	def addRhs(self, rhs=None):
 		"""
 		DOC ME
 		"""
 		# also assert right dimension?
-		assert isinstance(rhs, np.ndarray)
-		self._rhs = NumpyMatrixOperator(rhs)
+		if rhs != None:
+			assert isinstance(rhs, np.ndarray)
+			self._rhs = NumpyMatrixOperator(rhs)
+		else:
+			# try to get rhs from matDictionary(has to be transposed!)
+			self._rhs = NumpyMatrixOperator(self._CI.pushRhs().T)
 
 	def getRhs(self):
 		"""
@@ -84,14 +89,13 @@ class stationRB(object):
 		matDict = self._matDict
 
 		# Create lincomboperator for all involved matrices
-		ops, pops, paramSpaces, trainingSets, paramTypes = [], [], [], [], []
-		# maybe improve method below
+		ops, pops, paramSpaces, paramTypes = [], [], [], []
+		# maybe improve method below - put it somewhere else prob. !!!
 		for key in matDict:
 			ops.append(NumpyMatrixOperator(matDict[key][0]))
 			pops.append(matDict[key][1])
 			paramSpaces.append(matDict[key][2])
-			trainingSets.append(matDict[key][3])
-			paramTypes.append(matDict[key][4])
+			paramTypes.append(matDict[key][3])
 
 		op = LincombOperator(ops, coefficients=pops)
 		print op	
@@ -120,15 +124,26 @@ class stationRB(object):
 		"""
 		# assert right set structure
 		assert isinstance(training_set,np.ndarray) or isinstance(training_set, list)
+		if self._type == 'direct': 
+			# just supports return of one solution so far!!! Due to matlab restrictions
+			for mu in training_set:
+				u = self._rd.solve(mu)
+				ur = self._rc.reconstruct(u)
+		
+				print ur
+				return ur	
+		if self._type == 'disc':
+			solutions = {}
+			
+			for mu in training_set:
+				u = self._rd.solve(mu)
+				solutions[str(mu)]=self._rc.reconstruct(u)
+				print solutions
 
-		# just supports return of one solution so far!!! Due to matlab restrictions
-		for mu in training_set:
-			u = self._rd.solve(mu)
-			ur = self._rc.reconstruct(u)
-
-		print ur
-		return ur	
-
+			# save solutions to disk
+			self._CI.writeSolutions(solutions)
+		
+		
 	def getRB(self):
 		"""
 		DOC ME

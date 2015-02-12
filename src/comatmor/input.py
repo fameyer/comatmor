@@ -16,8 +16,8 @@ def getMatrix(type='disc', row=None, col=None, data=None):
 	if type == 'disc':
 		dic = {}
 		for key in parameter.matfile:
-		print 'Reading '+key+'...'
-		dic[key] = io.loadmat(parameter.matfile[key][0])[parameter.matfile[key][1]]
+			print 'Reading '+key+'...'
+			dic[key] = io.loadmat(parameter.matfile[key][0])[parameter.matfile[key][1]]
 		# DECOMPOSER here?
 		# dic stores name and state of a matrix
 		return dic

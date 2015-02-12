@@ -13,6 +13,10 @@ from scipy.sparse import csc_matrix
 from pymor.parameters.functionals import GenericParameterFunctional
 from pymor.parameters.base import Parameter
 
+from pymor.la.numpyvectorarray import NumpyVectorArray
+
+import parameter
+
 class comminterface(object):
 	"""
 	DOC ME
@@ -25,10 +29,11 @@ class comminterface(object):
 		self._matDict = {}
 		self._type = type
 
-	def pushMat(self, name, row, col, data, paramName, paramValue, paramSpace, training_set):
+	def pushMat(self, name=None, row=None, col=None, data=None, paramName=None, paramValue=None, paramSpace=None):
 		"""
 		DOC ME
 		"""
+		# Direct argument call
 		if self._type == 'direct':
 			
 			# check for correct data types
@@ -50,7 +55,20 @@ class comminterface(object):
 			self.decompose(matrix)
 
 			# save matrix to dic
-			self._matDict[name]=(matrix,paramFunc,paramSpace,training_set, paramType)
+			self._matDict[name]=(matrix, paramFunc, paramSpace, paramType)
+		
+		# Calls by harddisc access
+		if self._type == 'disc':
+	                for key in parameter.matfile:
+				# Obtain information from the parameter file
+				paramName = parameter.matfile[key][1]
+				paramValue = parameter.matfile[key][2]
+				paramType = Parameter({ paramName: np.array(paramValue)})
+				paramSpace = parameter.matfile[key][3]
+				paramFunc = GenericParameterFunctional(lambda mu: mu[paramName], parameter_type = paramType)
+                        	print 'Reading '+key+'...'
+
+	                        self._matDict[key] = (io.loadmat(parameter.matfile[key][0])[key],paramFunc,paramSpace,paramType)
 
 	def getMat(self):
 		"""
@@ -63,3 +81,22 @@ class comminterface(object):
 		DOC ME
 		"""
 		pass
+
+	def pushRhs(self):
+		"""
+		DOC ME
+		"""
+		# do that better without for-loop
+		for key in parameter.rhsfile:
+			print 'Reading rhs...'
+			return io.loadmat(parameter.rhsfile[key])[key]
+
+	def writeSolutions(self, u):
+		"""
+		Write given u to disc
+		"""		
+
+		assert self._type == 'disc'
+		assert isinstance(u,dict) 
+
+		io.savemat('RBsolutions',u)

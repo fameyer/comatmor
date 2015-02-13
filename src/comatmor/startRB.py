@@ -25,7 +25,7 @@ def startRB():
 	rb.constructRB()
 
 	# compute several solutions in rb setting and write to harddisc
-	training_set =[ 1.5, 2.0, 2.5]
+	training_set =[1.5, 2.0]
 	
 	rb.compute(training_set = training_set)
 

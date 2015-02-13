@@ -98,5 +98,5 @@ class comminterface(object):
 
 		assert self._type == 'disc'
 		assert isinstance(u,dict) 
-
+	
 		io.savemat('RBsolutions',u)

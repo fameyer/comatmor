@@ -134,12 +134,14 @@ class stationRB(object):
 				return ur	
 		if self._type == 'disc':
 			solutions = {}
-			
+			# save solutions for all parameters	
 			for mu in training_set:
-				u = self._rd.solve(mu)
-				solutions[str(mu)]=self._rc.reconstruct(u)
-				print solutions
 
+				u = self._rd.solve(mu)
+				# Use data function to transform NumpyVectorArray to standard NumpyArray
+				# Have to define valid matlab variable names
+				solutions['mu'+str(int(mu*100))]=(self._rc.reconstruct(u)).data
+				
 			# save solutions to disk
 			self._CI.writeSolutions(solutions)
 		

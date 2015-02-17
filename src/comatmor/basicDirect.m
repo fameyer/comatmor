@@ -17,6 +17,8 @@ modelinfo = mphmodel(model)
 % get/change physics parameter
 % ht=model.physics('ht')
 % mphgetproperties(ht.feature('solid1'))
+% model.param.set('k',2000)
+% mphgetexpressions(model.param)
 % print mesh
 % mphmesh(model)
 

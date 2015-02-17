@@ -2,6 +2,7 @@
 # Script to start RB-computations with harddisc data access with matlab
 # by Falk Meyer, 12.02.2015
 
+import os
 import comatmor
 
 def startRB():
@@ -9,8 +10,11 @@ def startRB():
 	DOC ME
 	"""
 	# Call comsol server matlab with extraction of everything necessary
-
-
+	print 'Starting comsol-matlab server...'
+ 	os.system('comsol server matlab < basic.m')
+	# commands to connect local comsol to server (when model is not present)	
+	# commands to run basic.m
+	# perhaps all in one
 
 	# create stationRB object
 	rb = comatmor.stationRB(inputmethod = 'disc')

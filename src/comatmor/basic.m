@@ -8,7 +8,17 @@
 pyversion /home/310191226/pymorDir/virt/bin/python
 
 % Get model from COMSOL server
-model = ModelUtil.model('Model2'); % Model3 just for example
+model = ModelUtil.model('Model2'); % Model2 just for example
+% Get basic modelinfo
+modelinfo = mphmodel(model)
+
+% Get parameters and variables
+%modelparaInfo = mphgetexpressions(model)
+% get/change physics parameter
+% ht=model.physics('ht')
+% mphgetproperties(ht.feature('solid1'))
+% print mesh
+% mphmesh(model)
 
 % Get stiffnessmatrix as 1x1 cell struct
 st = mphmatrix(model,'sol1','out',{'K'});
@@ -19,9 +29,8 @@ S = st.K;
 % Get solution of model
 U = mphgetu(model);
 
-% Get loadvector (RHS?)
+% Get RHS?
 %lt = mphmatrix(model,'sol1','out',{'L'});
-%L = lt.L;
 
 % Call matlab pymor Interface
 % Save matrix to harddisk as .mat file 
@@ -37,4 +46,4 @@ save('stiffnessMatrix.mat','S')
 % RB.addMatrix('Stiffness matrix', py.numpy.array([row']), py.numpy.array([col']), py.numpy.array([data']), 'Diffusion', 1, py.numpy.array([1,3]), py.numpy.array([1,3]))
 
 % Add solution to comsol model (does this work?)
-model.sol().create(NAME)
+%model.sol().create(NAME)

@@ -12,43 +12,46 @@ model = ModelUtil.model('Model2'); % Model2 just for example
 % Get basic modelinfo
 modelinfo = mphmodel(model)
 
-% Get parameters and variables
-%modelparaInfo = mphgetexpressions(model)
-% get/change physics parameter
-% ht=model.physics('ht')
-% mphgetproperties(ht.feature('solid1'))
-% model.param.set('k',2000)
-% mphgetexpressions(model.param)
-% print mesh
-% mphmesh(model)
+% Deactivate internal dofs
+Shape = model.physics('ht').prop('ShapeProperty');
+Shape.set('boundaryFlux_temperature', 1, '0');
 
-% Get stiffnessmatrix as 1x1 cell struct
-st = mphmatrix(model,'sol1','out',{'K'});
+MA = mphmatrix(model ,'sol1', ...
+'Out', {'Kc','Lc','Null','ud','uscale'},...
+'initmethod','init');
 
 % Get stiffnessmatrix as nxn sparse matrix
-S = st.K;
+S = MA.Kc;
 
 % Get right-hand side 
-
-% Get solution of model
-%U = mphgetu(model);
-
-% Get RHS?
-%lt = mphmatrix(model,'sol1','out',{'L'});
+L = MA.Lc;
 
 % Call matlab pymor Interface
-% Save matrix to harddisk as .mat file 
-save('stiffnessMatrix.mat','S')
-
-% Find possibility to set parameters
+% Save matrices to harddisk as .mat file 
+save('matrix.mat','S')
+save('rhs.mat','L')
 
 % Call python script
 system('source /home/310191226/pymorDir/virt/bin/activate && python startRB.py')
-% Change conductivity of model prob
-%model.material('mat1').propertyGroup('def').set('thermalconductivity', '2000');
 
-% Load solutions from harddisk
-load('RBsolutions.mat')
+% Or if existing, just load comatmor object and docalculations
+% ???
 
-% Add solution to comsol model (does this work?)
-%model.sol().create(NAME)
+% Load solutions from harddisk 
+% As struct M
+M = load('RBsolutions.mat');
+
+% Calculate final solution(scale)
+% Shortens to statement below due to MA.Null = 1 and MA.ud = 0 for THIS
+% case
+% Uc = MA.Kc\MA.Lc;
+%U1 = (1+Uc).*MA.uscale;
+names = fieldnames(M);
+for i=1:numel(names)
+    M.(names{i})=(1+M.(names{i})').*MA.uscale;
+end
+
+% Set and visualize solution in comsol and matlab
+model.sol('sol1').setU(M.(names{1}));
+model.sol('sol1').createSolution;
+mphplot(model,'pg1','rangenum',1);

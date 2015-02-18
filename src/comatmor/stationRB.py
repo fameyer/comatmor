@@ -133,14 +133,17 @@ class stationRB(object):
 				print ur
 				return ur	
 		if self._type == 'disc':
+			
 			solutions = {}
+			i = 0
 			# save solutions for all parameters	
 			for mu in training_set:
-
+				i=i+1
 				u = self._rd.solve(mu)
 				# Use data function to transform NumpyVectorArray to standard NumpyArray
 				# Have to define valid matlab variable names
-				solutions['mu'+str(int(mu*100))]=(self._rc.reconstruct(u)).data
+				# 'mu'+str(int(mu*100))
+				solutions['mu'+str(i)]=(self._rc.reconstruct(u)).data
 				
 			# save solutions to disk
 			self._CI.writeSolutions(solutions)
@@ -151,3 +154,9 @@ class stationRB(object):
 		DOC ME
 		"""
 		return self._rb
+	
+	def saveObj(self):
+		"""
+		provide opportunity to save object
+		"""
+		pass

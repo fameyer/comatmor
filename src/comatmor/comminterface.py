@@ -11,7 +11,7 @@ from scipy.sparse import csc_matrix
 
 # pymor includes
 from pymor.parameters.functionals import GenericParameterFunctional
-from pymor.parameters.base import Parameter
+from pymor.parameters.base import ParameterType
 
 from pymor.la.numpyvectorarray import NumpyVectorArray
 
@@ -26,10 +26,10 @@ class comminterface(object):
 		DOC ME
 		"""
 		self._name = name
-		self._matDict = {}
+		self._matDict = ({}, ParameterType({}), {})
 		self._type = type
 
-	def pushMat(self, name=None, row=None, col=None, data=None, paramName=None, paramValue=None, paramSpace=None):
+	def pushMat(self, name=None, row=None, col=None, data=None, paramName=None, paramShape=None, paramRange=None):
 		"""
 		DOC ME
 		"""
@@ -41,6 +41,11 @@ class comminterface(object):
 			assert isinstance(col, np.ndarray)
 			assert isinstance(data, np.ndarray)
 
+			# check for all input arguments
+			assert not isinstance(paramName,None)
+			assert not isinstance(paramShape,None)
+			assert not isinstance(paramSpace,None)
+
 			# get dimension of system
 			dim = row.max()+1 if row.max() > col.max() else col.max()+1
 
@@ -48,27 +53,39 @@ class comminterface(object):
 			matrix = csc_matrix((data,(row,col)),shape=(dim,dim))
 
 			# create parameterfunctional
-			paramType = Parameter({ paramName: np.array(paramValue)})
+			paramType = ParameterType({ paramName: paramShape})
 			paramFunc = GenericParameterFunctional(lambda mu: mu[paramName], parameter_type = paramType)
-
-			# decompose matrix comes together with above line later on
-			self.decompose(matrix)
-
 			# save matrix to dic
-			self._matDict[name]=(matrix, paramFunc, paramSpace, paramType)
-		
-		# Calls by harddisc access
+			self._matDict[0][name]=(matrix, paramFunc)
+				
+			# Update of parametertypes and ranges
+			self._matDict[1][paramName]=paramType[paramName]
+			self._matDict[2][paramName]=paramRange
+
+		# Call by harddisc access
 		if self._type == 'disc':
+		
 	                for key in parameter.matfile:
+
 				# Obtain information from the parameter file
 				paramName = parameter.matfile[key][1]
-				paramValue = parameter.matfile[key][2]
-				paramType = Parameter({ paramName: np.array(paramValue)})
-				paramSpace = parameter.matfile[key][3]
-				paramFunc = GenericParameterFunctional(lambda mu: mu[paramName], parameter_type = paramType)
+				paramShape = parameter.matfile[key][2]
+				paramRange = parameter.matfile[key][3]
+				
+				# assert linear, scalar parameterdependence
+				assert len(paramName)== 1
+			
+				# If just one scalar parameter given, we have to correct due to sparse scipy matrices
+				paramType = ParameterType({ paramName[0]: 0})
+					
+				paramFunc = GenericParameterFunctional(lambda mu: mu[paramName[0]], parameter_type = paramType)		
+			
                         	print 'Reading '+key+'...'
 
-	                        self._matDict[key] = (io.loadmat(parameter.matfile[key][0])[key],paramFunc,paramSpace,paramType)
+	                        self._matDict[0][key] = (io.loadmat(parameter.matfile[key][0])[key],paramFunc)
+				# add parametertypes and parameterRanges
+				self._matDict[1][paramName[0]] = paramType[paramName[0]]
+				self._matDict[2][paramName[0]] = paramRange[0]
 
 	def getMat(self):
 		"""
@@ -76,12 +93,6 @@ class comminterface(object):
 		"""
 		return self._matDict
 	
-	def decompose(self,mat):
-		"""
-		DOC ME
-		"""
-		pass
-
 	def pushRhs(self):
 		"""
 		DOC ME
@@ -91,7 +102,7 @@ class comminterface(object):
 			print 'Reading rhs...'
 			return io.loadmat(parameter.rhsfile[key])[key]
 
-	def writeSolutions(self, u):
+	def writeSolutions(self, u, file=None):
 		"""
 		Write given u to disc
 		"""		
@@ -99,4 +110,8 @@ class comminterface(object):
 		assert self._type == 'disc'
 		assert isinstance(u,dict) 
 	
-		io.savemat('RBsolutions',u)
+		# check if user-given filename is available, otherwise use default
+		if file == None:
+			io.savemat('RBsolutions',u)
+		else:
+			io.savemat(file,u)

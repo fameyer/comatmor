@@ -9,12 +9,6 @@ def startRB():
 	"""
 	DOC ME
 	"""
-	# Call comsol server matlab with extraction of everything necessary
-	# print 'Starting comsol-matlab server...'
- 	# os.system('comsol server matlab < basic.m')
-	# commands to connect local comsol to server (when model is not present)	
-	# commands to run basic.m
-	# perhaps all in one
 
 	# create stationRB object
 	rb = comatmor.stationRB(inputmethod = 'disc')
@@ -27,6 +21,9 @@ def startRB():
 	
 	# compute rb solution
 	rb.constructRB()
+
+	# One could also save the RB object
+	# rb.save()
 
 	# compute several solutions in rb setting and write to harddisc
 	training_set =[1.5, 2.0]

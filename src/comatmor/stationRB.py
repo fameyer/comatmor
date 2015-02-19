@@ -1,12 +1,12 @@
 # Class to apply pymor RB on a stationary PDE
 # by Falk Meyer, 10.02.2015
 
+import pickle
+import time
+
 import numpy as np
 
 from functools import partial
-
-# for debugging
-#import pdb
 
 # pymor includes
 from pymor.operators.constructions import LincombOperator
@@ -48,12 +48,12 @@ class stationRB(object):
 		# RB reconstructor
 		self._rc = None
 
-	def addMatrix(self, name=None, row=None, col=None, data=None, paramName=None, paramValue=None, paramSpace=None):
+	def addMatrix(self, name=None, row=None, col=None, data=None, paramName=None, paramShape=None, paramRange=None):
 		"""
-		paramSpace = [1,2] for intervall so to speak, even discrete or continuous
+		paramRange = [1,2] for intervall so to speak, even discrete or continuous
 		"""
 		# just call comminterface
-		self._CI.pushMat(name, row, col, data, paramName, paramValue, paramSpace)
+		self._CI.pushMat(name, row, col, data, paramName, paramShape, paramRange)
 		self._matDict = self._CI.getMat()
 
 	def getMatrix(self):
@@ -89,35 +89,37 @@ class stationRB(object):
 		matDict = self._matDict
 
 		# Create lincomboperator for all involved matrices
-		ops, pops, paramSpaces, paramTypes = [], [], [], []
+		ops, pops = [], []
 		# maybe improve method below - put it somewhere else prob. !!!
-		for key in matDict:
-			ops.append(NumpyMatrixOperator(matDict[key][0]))
-			pops.append(matDict[key][1])
-			paramSpaces.append(matDict[key][2])
-			paramTypes.append(matDict[key][3])
+		for key in matDict[0]:
+			ops.append(NumpyMatrixOperator(matDict[0][key][0]))
+			pops.append(matDict[0][key][1])
+
+		paramTypes  = matDict[1]
+		paramRanges = matDict[2]
 
 		op = LincombOperator(ops, coefficients=pops)
-		print op	
-		print self._rhs
+		#print op	
+		#print self._rhs
 		# create discretization
 		dis = StationaryDiscretization(operator=op, rhs=self._rhs)
-	
-		# create parameterSpace TO DO IN GENERAL - NOW JUST FOR ONE PARAM
-		print paramSpaces[0][0]
-		print paramSpaces[0][1]
-		paramSpace = CubicParameterSpace(paramTypes[0], minimum=paramSpaces[0][0], maximum=paramSpaces[0][1])
-		print paramSpace	
+
+		# create parameterSpace
+		paramSpace = CubicParameterSpace(parameter_type = paramTypes, ranges = paramRanges)
+		print 'Given parameterspace: '+str(paramSpace)
+
 		# create reductor
 	 	reductor = partial(reduce_stationary_affine_linear, error_product = None)
-
+		print 'Do greedy search...'
+		
 		# greedy search to construct RB 		
-		self._rb = greedy(dis, reductor, paramSpace.sample_uniformly(10), use_estimator=True, extension_algorithm=trivial_basis_extension, target_error=1e-10, max_extensions = 10) 
-
+		self._rb = greedy(dis, reductor, paramSpace.sample_uniformly(10), use_estimator=False, extension_algorithm=trivial_basis_extension, target_error=1e-10, max_extensions = 10) 
 		# get the reduced discretization and the reconstructor
 		self._rd, self._rc = self._rb['reduced_discretization'], self._rb['reconstructor']
 
-	def compute(self, training_set=None, error=False):
+		print 'Greedy search successfull!'
+
+	def compute(self, training_set=None, error=False, file=None):
 		"""
 		Think about error estimators and parameters etc etc
 		Compute rb solutions for training set - with errors?
@@ -125,7 +127,7 @@ class stationRB(object):
 		# assert right set structure
 		assert isinstance(training_set,np.ndarray) or isinstance(training_set, list)
 		if self._type == 'direct': 
-			# just supports return of one solution so far!!! Due to matlab restrictions
+			# just supports return of one solution so far!!! Due to matlab restrictions - or glue them all together in the end and decompose them in matlab
 			for mu in training_set:
 				u = self._rd.solve(mu)
 				ur = self._rc.reconstruct(u)
@@ -146,17 +148,39 @@ class stationRB(object):
 				solutions['mu'+str(i)]=(self._rc.reconstruct(u)).data
 				
 			# save solutions to disk
-			self._CI.writeSolutions(solutions)
-		
-		
+			self._CI.writeSolutions(solutions,file)
+			
 	def getRB(self):
 		"""
 		DOC ME
 		"""
 		return self._rb
 	
-	def saveObj(self):
+	def save(self, file=None):
 		"""
-		provide opportunity to save object
+		provide opportunity to save current object with pickle
+		perhaps think of deleting self._matDict first, 'cause reduced basis essential.
 		"""
-		pass
+		# if no filename given, take standard one
+		if file==None:
+			# give fileName a local time stamp depending on the current day and time
+			t = time.localtime()
+			file = str(t[2])+'_'+str(t[1])+'_'+str(t[0])+'_'+str(t[3])+str(t[4])+'_StationRB.save'
+		# Save current object
+		e = open(file,'w')
+		pickle.dump(self,e)
+	
+	@staticmethod
+	def load(path):
+		"""
+		CLASS METHOD (no instance of class needed to call it)
+		Load existing stationRB object located in path
+		"""
+		e = open(path,'r')
+		return pickle.load(e)
+	
+	def __str__(self):
+		"""
+		Give detailed information about the class(which equation can be solved? etc.)
+		"""
+	

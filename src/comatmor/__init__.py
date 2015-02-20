@@ -1,6 +1,4 @@
 # module includes
-from comminterface import comminterface
-from stationRB import stationRB
-
+import elliptic
+import heat
 print "Loading comatmor version 0.0.1"
-

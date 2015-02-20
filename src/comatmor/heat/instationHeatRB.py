@@ -24,9 +24,9 @@ from pymor.algorithms.greedy import greedy
 from pymor.algorithms.basisextension import trivial_basis_extension
 
 # local imports
-from comminterface import comminterface as CI
+from ..comminterface import comminterface as CI
 
-class stationRB(object):
+class instationHeatRB(object):
 	"""
 	DOC ME
 	"""

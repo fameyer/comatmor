@@ -1,9 +1,8 @@
-#!../../../virt/bin/python
+#!../../../../virt/bin/python
 # Script to start RB-computations with harddisc data access with matlab
 # by Falk Meyer, 12.02.2015
 
-#import os
-import comatmor
+from comatmor.elliptic import ellipticRB
 
 def startRB():
 	"""
@@ -11,7 +10,7 @@ def startRB():
 	"""
 
 	# create stationRB object
-	rb = comatmor.stationRB(inputmethod = 'disc')
+	rb = ellipticRB(inputmethod = 'disc')
 	
 	# add system
 	rb.addMatrix()

@@ -15,7 +15,8 @@ from pymor.parameters.base import ParameterType
 
 from pymor.la.numpyvectorarray import NumpyVectorArray
 
-import parameter
+# make that NICER
+from comatmor.elliptic import parameter
 
 class comminterface(object):
 	"""

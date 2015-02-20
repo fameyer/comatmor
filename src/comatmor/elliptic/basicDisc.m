@@ -16,6 +16,11 @@ modelinfo = mphmodel(model)
 Shape = model.physics('ht').prop('ShapeProperty');
 Shape.set('boundaryFlux_temperature', 1, '0');
 
+% HERE DO THE AFFINE DECOMPOSITION
+% FIRST: FIND ALL DEPENDENT PARAMETERS
+% SECOND: SET THEM TO 0 SEQUENTIELLY
+% THIRD: GET THIS INFORMATION TO PYTHON
+
 MA = mphmatrix(model ,'sol1', ...
 'Out', {'Kc','Lc','Null','ud','uscale'},...
 'initmethod','init');
@@ -32,7 +37,7 @@ save('matrix.mat','S')
 save('rhs.mat','L')
 
 % Call python script
-system('source /home/310191226/pymorDir/virt/bin/activate && python startRB.py')
+system('source /home/310191226/pymorDir/virt/bin/activate && python startEllipticRB.py')
 
 % Or if existing, just load comatmor object and docalculations
 % ???

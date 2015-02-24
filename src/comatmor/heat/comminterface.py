@@ -12,11 +12,14 @@ from scipy.sparse import csc_matrix
 # pymor includes
 from pymor.parameters.functionals import GenericParameterFunctional
 from pymor.parameters.base import ParameterType
+from pymor.parameters.base import Parameter
 
 from pymor.la.numpyvectorarray import NumpyVectorArray
 
 # make that NICER
-from comatmor.elliptic import parameter
+#from comatmor.elliptic import parameterHeateq as parameter
+from comatmor.heat import parameterHeateq as parameter
+
 
 class comminterface(object):
 	"""
@@ -79,14 +82,18 @@ class comminterface(object):
 				# If just one scalar parameter given, we have to correct due to sparse scipy matrices
 				paramType = ParameterType({ paramName[0]: 0})
 					
-				paramFunc = GenericParameterFunctional(lambda mu: mu[paramName[0]], parameter_type = paramType)		
-			
-                        	print 'Reading '+key+'...'
-
-	                        self._matDict[0][key] = (io.loadmat(parameter.matfile[key][0])[key],paramFunc)
+	                 	print 'Reading '+key+'...'
 				# add parametertypes and parameterRanges
+
 				self._matDict[1][paramName[0]] = paramType[paramName[0]]
 				self._matDict[2][paramName[0]] = paramRange[0]
+
+			for key in parameter.matfile:
+				paramName = parameter.matfile[key][1]
+				print 'Reading parameter: '+paramName[0]
+				# Following is comsol specific for given problem
+				def paramFunc(key = paramName[0]): return GenericParameterFunctional(lambda mu: mu[key], parameter_type = self._matDict[1])
+				self._matDict[0][key] = (io.loadmat(parameter.matfile[key][0])[key],paramFunc(paramName[0])) 
 
 	def getMat(self):
 		"""
@@ -98,10 +105,35 @@ class comminterface(object):
 		"""
 		DOC ME
 		"""
-		# do that better without for-loop
-		for key in parameter.rhsfile:
-			print 'Reading rhs...'
-			return io.loadmat(parameter.rhsfile[key])[key]
+		if self._type == 'disc':
+			# do that better without for-loop
+			for key in parameter.rhsfile:
+				print 'Reading rhs...'
+				return io.loadmat(parameter.rhsfile[key])[key]
+		else:
+			pass
+	
+	def readMass(self):
+		"""
+		Read mass/damping matrix
+		"""
+		if self._type == 'disc':
+			for key in parameter.massfile:
+				print 'Reading mass...'
+				return io.loadmat(parameter.massfile[key])[key]
+		else:
+			pass
+
+	def readU0(self):
+		"""
+		Read initial solution for time-dependent problems
+		"""
+		if self._type == 'disc':
+			for key in parameter.u0file:
+				print 'Reading initial solution...'
+				return io.loadmat(parameter.u0file[key])[key]
+		else:
+			pass
 
 	def writeSolutions(self, u, file=None):
 		"""

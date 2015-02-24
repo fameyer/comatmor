@@ -12,14 +12,11 @@ model = ModelUtil.model('Model2'); % Model2 just for example
 % Get basic modelinfo
 modelinfo = mphmodel(model)
 
-% Deactivate internal dofs
-Shape = model.physics('ht').prop('ShapeProperty');
-Shape.set('boundaryFlux_temperature', 1, '0');
+% mphsearch
 
-% HERE DO THE AFFINE DECOMPOSITION
-% FIRST: FIND ALL DEPENDENT PARAMETERS
-% SECOND: SET THEM TO 0 SEQUENTIELLY
-% THIRD: GET THIS INFORMATION TO PYTHON
+% Deactivate internal dofs for simple ellip problem
+Shape = model.physics(modelinfo.physics).prop('ShapeProperty');
+Shape.set('boundaryFlux_temperature', 1, '0'); % for ht model
 
 MA = mphmatrix(model ,'sol1', ...
 'Out', {'Kc','Lc','Null','ud','uscale'},...
@@ -31,16 +28,12 @@ S = MA.Kc;
 % Get right-hand side 
 L = MA.Lc;
 
-% Call matlab pymor Interface
 % Save matrices to harddisk as .mat file 
 save('matrix.mat','S')
 save('rhs.mat','L')
 
 % Call python script
 system('source /home/310191226/pymorDir/virt/bin/activate && python startEllipticRB.py')
-
-% Or if existing, just load comatmor object and docalculations
-% ???
 
 % Load solutions from harddisk 
 % As struct M

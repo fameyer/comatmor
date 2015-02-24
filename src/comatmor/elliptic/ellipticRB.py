@@ -6,6 +6,7 @@ import time
 
 import numpy as np
 
+from scipy import sparse,io
 from functools import partial
 
 # pymor includes
@@ -19,12 +20,16 @@ from pymor.discretizations.basic import StationaryDiscretization
 from pymor.reductors.linear import reduce_stationary_affine_linear
 
 from pymor.parameters.spaces import CubicParameterSpace
+from pymor.parameters.base import Parameter
 
 from pymor.algorithms.greedy import greedy
 from pymor.algorithms.basisextension import trivial_basis_extension
+from pymor.algorithms.basisextension import gram_schmidt_basis_extension
 
 # comatmor imports
-from ..comminterface import comminterface as CI
+#from ..comminterface import comminterface as CI
+from comminterface import comminterface as CI
+
 
 class ellipticRB(object):
 	"""
@@ -80,7 +85,7 @@ class ellipticRB(object):
 		"""
 		return self._rhs
 
-	def constructRB(self):
+	def constructRB(self, num_samples = 10):
 		"""
 		TO DO: add possibility to change basis extension for instance
 		"""
@@ -93,14 +98,20 @@ class ellipticRB(object):
 		# maybe improve method below - put it somewhere else prob. !!!
 		for key in matDict[0]:
 			ops.append(NumpyMatrixOperator(matDict[0][key][0]))
+			#print matDict[0][key][0]
 			pops.append(matDict[0][key][1])
+			#print matDict[0][key][1]
 
 		paramTypes  = matDict[1]
 		paramRanges = matDict[2]
+	
+		op = LincombOperator(operators=ops, coefficients=pops)
+		#print op.assemble((4,2))._matrix
 
-		op = LincombOperator(ops, coefficients=pops)
-		#print op	
-		#print self._rhs
+		
+		#print self._rhs._matrix
+		#io.savemat('PyRhs',{'Pyrhs': self._rhs._matrix})	
+
 		# create discretization
 		dis = StationaryDiscretization(operator=op, rhs=self._rhs)
 
@@ -113,11 +124,11 @@ class ellipticRB(object):
 		print 'Do greedy search...'
 		
 		# greedy search to construct RB 		
-		self._rb = greedy(dis, reductor, paramSpace.sample_uniformly(10), use_estimator=False, extension_algorithm=trivial_basis_extension, target_error=1e-10, max_extensions = 10) 
+		self._rb = greedy(dis, reductor, paramSpace.sample_uniformly(num_samples), use_estimator=False, extension_algorithm=gram_schmidt_basis_extension, target_error=1e-10, max_extensions = 10) 
 		# get the reduced discretization and the reconstructor
 		self._rd, self._rc = self._rb['reduced_discretization'], self._rb['reconstructor']
 
-		print 'Greedy search successfull!'
+		print 'Greedy search successfull! Reduced basis has dimension: '+str(len(self._rb['basis']))
 
 	def compute(self, training_set=None, error=False, file=None):
 		"""

@@ -16,6 +16,9 @@ from pymor.parameters.base import Parameter
 
 from pymor.la.numpyvectorarray import NumpyVectorArray
 
+from pymor.operators.numpy import NumpyMatrixOperator
+from pymor.operators.constructions import LincombOperator
+
 # make that NICER
 #from comatmor.elliptic import parameterHeateq as parameter
 from comatmor.heat import parameterHeateq as parameter
@@ -91,9 +94,31 @@ class comminterface(object):
 			for key in parameter.matfile:
 				paramName = parameter.matfile[key][1]
 				print 'Reading parameter: '+paramName[0]
-				# Following is comsol specific for given problem
-				def paramFunc(key = paramName[0]): return GenericParameterFunctional(lambda mu: mu[key], parameter_type = self._matDict[1])
-				self._matDict[0][key] = (io.loadmat(parameter.matfile[key][0], mat_dtype=True)[key],paramFunc(paramName[0])) 
+				name = paramName[0]
+				paramFunc = GenericParameterFunctional(lambda mu, name=name: mu[name], parameter_type = self._matDict[1])
+				self._matDict[0][key] = (io.loadmat(parameter.matfile[key][0], mat_dtype=True)[key],paramFunc) 
+
+        def assembleOperators(self):
+                """
+                Assemble operators to be prepared for RB calculations 
+                """
+                matDict = self._matDict
+
+                # Create lincomboperator for all involved matrices
+                stiffOps, rhsOps, stiffPops, rhsPops = [], [], [], []
+                # maybe improve method below - put it somewhere else prob. !!!
+                # get stiffness matrices and rhs matrices
+                for key in parameter.stiffNames:
+                #for key in matDict[0]:
+                        stiffOps.append(NumpyMatrixOperator(matDict[0][key][0]))
+                        stiffPops.append(matDict[0][key][1])
+                for key in parameter.rhsNames:
+                        rhsOps.append(NumpyMatrixOperator(matDict[0][key][0].T))
+                        rhsPops.append(matDict[0][key][1])
+
+                stiffOp = LincombOperator(stiffOps, coefficients=stiffPops)
+                rhsOp = LincombOperator(rhsOps,coefficients=rhsPops)
+                return stiffOp, rhsOp
 
 	def getMat(self):
 		"""

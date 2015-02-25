@@ -1,9 +1,8 @@
 % COMSOL-MATLAB-PYMOR interface for disc-based communication
 % Falk Meyer, 20.02.2015
-% Linked to model heatequation.m
+% Linked to model heatequationTime.m
 
-% Automatize setup of COMSOL-MATLAB Server - write function
-% ???
+% Automatize setup of COMSOL-MATLAB Server - write function???
 
 % initialize right python interpreter
 pyversion /home/310191226/pymorDir/virt/bin/python
@@ -16,16 +15,24 @@ modelinfo = mphmodel(model)
 sol = 'sol1';
 % plotgroup
 pg = 'pg1';
+% set endtime and stepsize
+T = 1;
+steps = 10;
+
 % mphsearch
 
-% Deactivate internal dofs for simple ellip problem
+% Deactivate internal dofs to enable comparable results
 Shape = model.physics(modelinfo.physics).prop('ShapeProperty');
 %Shape.set('boundaryFlux_temperature', 1, '0'); % for ht model
 Shape.set('boundaryFlux', 1, '0');
 
 % Get initial solution
-%u0 = mphgetu(model,'solnum',1);
-save('u0.mat','u0')
+u0 = mphgetu(model,'solnum',1);
+MA = mphmatrix(model ,sol, 'Out', {'Null'},'initmethod','init');
+u0 = MA.Null'*u0;
+% Don't know why i didn't come
+u0 = u0-1;
+save('u0.mat','u0');
 
 % AFFINE DECOMPOSITION
 modelPhysics = model.physics(modelinfo.physics);
@@ -72,7 +79,9 @@ save('Lc2.mat','Lc2')
 save('Dc.mat','Dc')
 
 % Call python script
-system('source /home/310191226/pymorDir/virt/bin/activate && python startHeatRB.py')
+endtime =['--endtime=',num2str(T)];
+step_number = ['--steps=',int2str(steps)];
+system(['source /home/310191226/pymorDir/virt/bin/activate && python startHeatRB.py',' ',endtime,' ',step_number])
 
 % Load solutions from harddisk 
 % As struct M

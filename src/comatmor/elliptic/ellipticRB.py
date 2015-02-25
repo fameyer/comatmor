@@ -29,7 +29,7 @@ from pymor.algorithms.basisextension import gram_schmidt_basis_extension
 # comatmor imports
 #from ..comminterface import comminterface as CI
 from comminterface import comminterface as CI
-import parameterHeateq as parameter
+
 
 class ellipticRB(object):
 	"""
@@ -53,9 +53,13 @@ class ellipticRB(object):
 		# RB reconstructor
 		self._rc = None
 
+		# for inputmethod = disc call all necessary get-functions
+		if self._type == 'disc':
+			self.addMatrix()
+
 	def addMatrix(self, name=None, row=None, col=None, data=None, paramName=None, paramShape=None, paramRange=None):
 		"""
-		paramRange = [1,2] for intervall so to speak, even discrete or continuous
+		Add matrices to given ellipticRB object - direct or by disc access
 		"""
 		# just call comminterface
 		self._CI.pushMat(name, row, col, data, paramName, paramShape, paramRange)
@@ -86,27 +90,28 @@ class ellipticRB(object):
 		"""
 		return self._rhs
 
-        def assembleOperators(self):
-                """
-                Assemble operators to be prepared for RB calculations 
-                """
-                matDict = self._matDict
-
-                # Create lincomboperator for all involved matrices
-                stiffOps, rhsOps, stiffPops, rhsPops = [], [], [], []
-                # maybe improve method below - put it somewhere else prob. !!!
-                # get stiffness matrices and rhs matrices
-                for key in parameter.stiffNames:
-                #for key in matDict[0]:
-                        stiffOps.append(NumpyMatrixOperator(matDict[0][key][0]))
-                        stiffPops.append(matDict[0][key][1])
-                for key in parameter.rhsNames:
-			print(matDict[0][key][0].dtype)
-                        rhsOps.append(NumpyMatrixOperator(matDict[0][key][0].T))
-                        rhsPops.append(matDict[0][key][1])
-                stiffOp = LincombOperator(stiffOps, coefficients=stiffPops)
-                rhsOp = LincombOperator(rhsOps,coefficients=rhsPops)
-                return stiffOp, rhsOp
+	# moved to comminterface
+        #def assembleOperators(self):
+        #        """
+        #        Assemble operators to be prepared for RB calculations 
+        #        """
+        #        matDict = self._matDict
+	#
+        #        # Create lincomboperator for all involved matrices
+        #        stiffOps, rhsOps, stiffPops, rhsPops = [], [], [], []
+        #        # maybe improve method below - put it somewhere else prob. !!!
+        #        # get stiffness matrices and rhs matrices
+        #        for key in parameter.stiffNames:
+        #        #for key in matDict[0]:
+        #                stiffOps.append(NumpyMatrixOperator(matDict[0][key][0]))
+        #                stiffPops.append(matDict[0][key][1])
+        #        for key in parameter.rhsNames:
+	#		print(matDict[0][key][0].dtype)
+        #                rhsOps.append(NumpyMatrixOperator(matDict[0][key][0].T))
+        #                rhsPops.append(matDict[0][key][1])
+        #        stiffOp = LincombOperator(stiffOps, coefficients=stiffPops)
+        #        rhsOp = LincombOperator(rhsOps,coefficients=rhsPops)
+        #        return stiffOp, rhsOp
 
 
 	def constructRB(self, num_samples = 10):
@@ -116,7 +121,7 @@ class ellipticRB(object):
 		print 'Constructing reduced basis...' 
 
                 # call assembleOperators and get right operators
-                stiffOp, rhsOp = self.assembleOperators()
+                stiffOp, rhsOp = self._CI.assembleOperators()
 
 		paramTypes  = self._matDict[1]
 		paramRanges = self._matDict[2]

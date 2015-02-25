@@ -1,4 +1,4 @@
-# Class to apply pymor RB on a stationary PDE
+# Class to apply pymor RB on an instationary, parabolic PDE
 # by Falk Meyer, 10.02.2015
 
 import pickle
@@ -27,11 +27,9 @@ from pymor.algorithms.basisextension import gram_schmidt_basis_extension
 from pymor.algorithms.basisextension import pod_basis_extension
 from pymor.algorithms.timestepping import ImplicitEulerTimeStepper
 
-
 # local imports
 #from ..comminterface import comminterface as CI
 from comminterface import comminterface as CI
-import parameterHeateq as parameter
 
 class instationHeatRB(object):
 	"""
@@ -57,9 +55,15 @@ class instationHeatRB(object):
 		# RB reconstructor
 		self._rc = None
 
+		# for inputmethod = disc call all necessary get-functions
+		if self._type == 'disc':
+			self.addMatrix()
+			self.getMass()
+			self.getU0()
+
 	def addMatrix(self, name=None, row=None, col=None, data=None, paramName=None, paramShape=None, paramRange=None):
 		"""
-		paramRange = [1,2] for intervall so to speak, even discrete or continuous
+		Add matrices to given instationHeatRB object - direct or by disc access
 		"""
 		# just call comminterface
 		self._CI.pushMat(name, row, col, data, paramName, paramShape, paramRange)
@@ -108,38 +112,36 @@ class instationHeatRB(object):
 		else:
 			pass
 
-	def assembleOperators(self):
-		"""
-		Assemble operators to be prepared for RB calculations 
-		"""
-		matDict = self._matDict
-
-		# Create lincomboperator for all involved matrices
-		stiffOps, rhsOps, stiffPops, rhsPops = [], [], [], []
-		# maybe improve method below - put it somewhere else prob. !!!
-		# get stiffness matrices and rhs matrices
-		for key in parameter.stiffNames:
-		#for key in matDict[0]:
-			stiffOps.append(NumpyMatrixOperator(matDict[0][key][0]))
-			stiffPops.append(matDict[0][key][1])
-		for key in parameter.rhsNames:
-			rhsOps.append(NumpyMatrixOperator(matDict[0][key][0].T))
-			rhsPops.append(matDict[0][key][1])
-	
-		stiffOp = LincombOperator(stiffOps, coefficients=stiffPops)
-		rhsOp = LincombOperator(rhsOps,coefficients=rhsPops)
-		return stiffOp, rhsOp	
+	# moved to comminterface.py
+	#def assembleOperators(self):
+	#	"""
+	#	Assemble operators to be prepared for RB calculations 
+	#	"""
+	#	matDict = self._matDict
+	#
+	#	# Create lincomboperator for all involved matrices
+	#	stiffOps, rhsOps, stiffPops, rhsPops = [], [], [], []
+	#	# maybe improve method below - put it somewhere else prob. !!!
+	#	# get stiffness matrices and rhs matrices
+	#	for key in parameter.stiffNames:
+	#	#for key in matDict[0]:
+	#		stiffOps.append(NumpyMatrixOperator(matDict[0][key][0]))
+	#		stiffPops.append(matDict[0][key][1])
+	#	for key in parameter.rhsNames:
+	#		rhsOps.append(NumpyMatrixOperator(matDict[0][key][0].T))
+	#		rhsPops.append(matDict[0][key][1])
+	#
+	#	stiffOp = LincombOperator(stiffOps, coefficients=stiffPops)
+	#	rhsOp = LincombOperator(rhsOps,coefficients=rhsPops)
+	#	return stiffOp, rhsOp	
 
 	def constructRB(self, T=0, n=0):
 		"""
-		Construct reduced basis with end-time T
+		Construct reduced basis with end-time T and number of steps n
 		"""
 		print 'Constructing reduced basis...' 
 		# call assembleOperators and get right operators
-		stiffOp, rhsOp = self.assembleOperators()
-		#print stiffOp	
-		#print self._rhs._matrix
-		#raw_input()		
+		stiffOp, rhsOp = self._CI.assembleOperators()
 		
 		# get parametertypes and ranges
 		paramTypes  = self._matDict[1]
@@ -153,7 +155,6 @@ class instationHeatRB(object):
 		#mass = NumpyMatrixOperator(np.eye(dimension))
 
 		#print stiffOp.assemble((4,2))._matrix
-		#raw_input()
 		#print rhsOp.assemble((4,2))._matrix
 		#io.savemat('Rhs',{'r': rhsOp.assemble((4,2))._matrix})
 		#raw_input()
@@ -164,7 +165,7 @@ class instationHeatRB(object):
 		#io.savemat('mass',{'mass': self._mass._matrix})	
 		#exit()
 		print dis.h1_norm
-		#exit()	
+
 		#R = dis.solve((1.0,40.0))
 		#self._CI.writeSolutions({'R': R.data},file='Test11')
 		#exit()

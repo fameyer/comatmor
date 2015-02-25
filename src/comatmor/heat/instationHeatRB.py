@@ -149,7 +149,7 @@ class instationHeatRB(object):
 		time_stepper = ImplicitEulerTimeStepper(n)
 
 		# create mass matrix
-		#dimension = op.source.dim
+		#dimension = stiffOp.source.dim
 		#mass = NumpyMatrixOperator(np.eye(dimension))
 
 		#print stiffOp.assemble((4,2))._matrix
@@ -159,14 +159,15 @@ class instationHeatRB(object):
 		#raw_input()
 
 		# create discretization
-		dis = InstationaryDiscretization(operator=stiffOp, rhs=rhsOp, initial_data=self._u0, T=T, time_stepper=time_stepper, mass=self._mass)
+		dis = InstationaryDiscretization(operator=stiffOp, rhs=rhsOp, initial_data=self._u0, T=T, time_stepper=time_stepper, mass=self._mass, products={'h1': stiffOp.assemble((1,1))})
 
-		io.savemat('mass',{'mass': self._mass._matrix})	
-		exit()
-			
-		R = dis.solve((1,1))
-		self._CI.writeSolutions({'R': R.data},file='Test11')
-		exit()
+		#io.savemat('mass',{'mass': self._mass._matrix})	
+		#exit()
+		print dis.h1_norm
+		#exit()	
+		#R = dis.solve((1.0,40.0))
+		#self._CI.writeSolutions({'R': R.data},file='Test11')
+		#exit()
 		# create parameterSpace
 		paramSpace = CubicParameterSpace(parameter_type = paramTypes, ranges = paramRanges)
 		print 'Given parameterspace: '+str(paramSpace)
@@ -178,7 +179,7 @@ class instationHeatRB(object):
 		print 'Do greedy search...'
 		
 		# greedy search to construct RB 		
-		self._rb = greedy(dis, reductor, paramSpace.sample_uniformly(10), use_estimator=False, extension_algorithm=pod_basis_extension, target_error=1e-10, max_extensions = 10) 
+		self._rb = greedy(dis, reductor, paramSpace.sample_uniformly(10), use_estimator=False, extension_algorithm=pod_basis_extension, target_error=1e-10, max_extensions = 30, error_norm= lambda U: np.max(dis.h1_norm(U)) ) 
 		# get the reduced discretization and the reconstructor
 		self._rd, self._rc = self._rb['reduced_discretization'], self._rb['reconstructor']
 

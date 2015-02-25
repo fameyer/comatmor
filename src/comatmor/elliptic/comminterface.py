@@ -90,8 +90,8 @@ class comminterface(object):
 				paramName = parameter.matfile[key][1]
 				print 'Reading parameter: '+paramName[0]
 				# Following is comsol specific for given problem
-				def paramFunc(key = paramName[0]): return GenericParameterFunctional(lambda mu: mu[key]/mu['c2'], parameter_type = self._matDict[1])
-				self._matDict[0][key] = (io.loadmat(parameter.matfile[key][0])[key],paramFunc(paramName[0])) 
+				def paramFunc(key = paramName[0]): return GenericParameterFunctional(lambda mu: mu[key], parameter_type = self._matDict[1])
+				self._matDict[0][key] = (io.loadmat(parameter.matfile[key][0],mat_dtype=True)[key],paramFunc(paramName[0])) 
 
 	def getMat(self):
 		"""
@@ -104,9 +104,12 @@ class comminterface(object):
 		DOC ME
 		"""
 		# do that better without for-loop
-		for key in parameter.rhsfile:
-			print 'Reading rhs...'
-			return io.loadmat(parameter.rhsfile[key])[key]
+		if self._type == 'disc':
+			for key in parameter.rhsfile:
+				print 'Reading rhs...'
+				return io.loadmat(parameter.rhsfile[key])[key]
+		else:
+			pass
 
 	def readU0(self):
 		"""

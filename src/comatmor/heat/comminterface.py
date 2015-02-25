@@ -93,7 +93,7 @@ class comminterface(object):
 				print 'Reading parameter: '+paramName[0]
 				# Following is comsol specific for given problem
 				def paramFunc(key = paramName[0]): return GenericParameterFunctional(lambda mu: mu[key], parameter_type = self._matDict[1])
-				self._matDict[0][key] = (io.loadmat(parameter.matfile[key][0])[key],paramFunc(paramName[0])) 
+				self._matDict[0][key] = (io.loadmat(parameter.matfile[key][0], mat_dtype=True)[key],paramFunc(paramName[0])) 
 
 	def getMat(self):
 		"""

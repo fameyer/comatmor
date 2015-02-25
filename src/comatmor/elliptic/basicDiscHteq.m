@@ -27,23 +27,24 @@ modelPhysics = model.physics(modelinfo.physics);
 
 % set variables to 0 and get matrices 
 % nam = ['hteq',int2str(i)];
-% first stiffness matrix
+% stiffness matrix Kc + load vectors Lc(RHS)
 modelPhysics.feature('hteq1').set('c',1);
 modelPhysics.feature('hteq2').set('c',0);
 
 MA = mphmatrix(model ,'sol1', ...
-'Out', {'Kc'},'initmethod','init');
+'Out', {'Kc','Lc'},'initmethod','init');
 
 Kc1 = MA.Kc;
+Lc1 = MA.Lc;
 
-% second stiffness matrix
 modelPhysics.feature('hteq1').set('c',0);
 modelPhysics.feature('hteq2').set('c',1);
 
 MA = mphmatrix(model ,'sol1', ...
-'Out', {'Kc'},'initmethod','init');
+'Out', {'Kc','Lc'},'initmethod','init');
 
 Kc2 = MA.Kc;
+Lc2 = MA.Lc;
 
 % Go to default (later save state before perhaps?)
 modelPhysics.feature('hteq1') .set('c',1);
@@ -51,16 +52,14 @@ modelPhysics.feature('hteq2').set('c',1);
 
 % Get other components
 MA = mphmatrix(model ,'sol1', ...
-'Out', {'Lc','Null','ud','uscale'},...
+'Out', {'Null','ud','uscale'},...
 'initmethod','init');
-
-% Get right-hand side 
-Lc = MA.Lc;
 
 % Save matrices to harddisk as .mat file 
 save('Kc1.mat','Kc1')
 save('Kc2.mat','Kc2')
-save('rhsHeateq.mat','Lc')
+save('Lc1.mat','Lc1')
+save('Lc2.mat','Lc2')
 
 % Call python script
 system('source /home/310191226/pymorDir/virt/bin/activate && python startEllipticRBHeateq.py')

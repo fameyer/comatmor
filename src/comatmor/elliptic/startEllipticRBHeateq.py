@@ -15,9 +15,6 @@ def startRB():
 	# add system
 	rb.addMatrix()
 	
-	# add rhs
-	rb.addRhs()
-	
 	# compute rb solution
 	rb.constructRB(10)
 
@@ -27,7 +24,7 @@ def startRB():
 	# compute several solutions in rb setting and write to harddisc
 	training_set =[(i,j) for i in range(1,50,5) for j in range(1,50,5)]
 	
-	rb.compute(training_set = [(50.0,1.0)])#training_set)
+	rb.compute(training_set = [(1.0,40.0)])#training_set)
 
 if __name__ == '__main__':
         startRB()

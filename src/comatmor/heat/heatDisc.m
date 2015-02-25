@@ -9,13 +9,13 @@
 pyversion /home/310191226/pymorDir/virt/bin/python
 
 % Get model from COMSOL server
-model = ModelUtil.model('Model2'); % Model2 just for example
+model = ModelUtil.model('Model3'); % Model2 just for example
 % Get basic modelinfo
 modelinfo = mphmodel(model)
 % fix solver nod
-sol = 'sol2';
+sol = 'sol1';
 % plotgroup
-pg = 'pg2';
+pg = 'pg1';
 % mphsearch
 
 % Deactivate internal dofs for simple ellip problem
@@ -24,7 +24,7 @@ Shape = model.physics(modelinfo.physics).prop('ShapeProperty');
 Shape.set('boundaryFlux', 1, '0');
 
 % Get initial solution
-u0 = mphgetu(model,'solnum',1);
+%u0 = mphgetu(model,'solnum',1);
 save('u0.mat','u0')
 
 % AFFINE DECOMPOSITION
@@ -81,24 +81,29 @@ M = load('RBsolutions.mat');
 % Calculate final solution(scale+boundary conditions)
 names = fieldnames(M);
 steps = length(M.(names{1})(:,1));
+% introduce new variable solutions to fit (possibly) adjustet size
 for i=1:numel(names)
     M.(names{i}) = M.(names{i})';
+    solutions.(names{i})= zeros(length(MA.Null),numel(names));
 end
+
 for i=1:numel(names)
     for j=1:steps
-        M.(names{i})(:,j)=MA.Null*M.(names{i})(:,j);
-        M.(names{i})(:,j)=M.(names{i})(:,j)+MA.ud;
-        M.(names{i})(:,j)=(M.(names{i})(:,j)).*MA.uscale;
+        solutions.(names{i})(:,j)=MA.Null*M.(names{i})(:,j);
+        solutions.(names{i})(:,j)=solutions.(names{i})(:,j)+MA.ud;
+        solutions.(names{i})(:,j)=(1+solutions.(names{i})(:,j)).*MA.uscale;
         % There was (1+...) in last eq 
     end
 end
 
 % Set and visualize solution in comsol and matlab
 names{1}
-t = model.sol(sol).getPVals
+% Better solutions setPVals
+t= linspace(1,steps,steps);
+%t = model.sol(sol).getPVals
 model.sol(sol).setPVals(t)
 for i=1:length(t)
-    model.sol(sol).setU(i,M.(names{1})(:,i));
+    model.sol(sol).setU(i,solutions.(names{1})(:,i));
 end
 
 model.sol(sol).createSolution;

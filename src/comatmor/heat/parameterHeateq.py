@@ -7,3 +7,4 @@ stiffNames = ('Kc1','Kc2')
 rhsNames = ('Lc1','Lc2') 
 u0file = {'u0': '/home/310191226/pymorDir/comatmor/src/comatmor/heat/u0.mat'}
 massfile = {'Dc': '/home/310191226/pymorDir/comatmor/src/comatmor/heat/Dc.mat'}
+trainingSetfile = {'training_set': '/home/310191226/pymorDir/comatmor/src/comatmor/heat/training_set.mat'}

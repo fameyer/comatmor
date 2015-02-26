@@ -193,7 +193,7 @@ class instationHeatRB(object):
 		Compute rb solutions for training set - with errors?
 		"""
 		# assert right set structure
-		assert isinstance(training_set,np.ndarray) or isinstance(training_set, list)
+		assert isinstance(training_set,np.ndarray) or isinstance(training_set, list) or training_set == None
 		if self._type == 'direct': 
 			# just supports return of one solution so far!!! Due to matlab restrictions - or glue them all together in the end and decompose them in matlab
 			for mu in training_set:
@@ -203,7 +203,9 @@ class instationHeatRB(object):
 				print ur
 				return ur	
 		if self._type == 'disc':
-			
+			# Get training_set from disc
+		 	assert training_set == None	
+			training_set = self._CI.getTrainingSet()
 			solutions = {}
 			i = 0
 			# save solutions for all parameters	

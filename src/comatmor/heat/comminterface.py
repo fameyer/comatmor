@@ -106,7 +106,7 @@ class comminterface(object):
 
                 # Create lincomboperator for all involved matrices
                 stiffOps, rhsOps, stiffPops, rhsPops = [], [], [], []
-                # maybe improve method below - put it somewhere else prob. !!!
+                
                 # get stiffness matrices and rhs matrices
                 for key in parameter.stiffNames:
                 #for key in matDict[0]:
@@ -173,3 +173,16 @@ class comminterface(object):
 			io.savemat('RBsolutions',u)
 		else:
 			io.savemat(file,u)
+
+	def getTrainingSet(self):
+		"""
+		Read training-set from disc
+		"""
+		if self._type == 'disc':
+			for key in parameter.trainingSetfile:
+				print 'Obtain training_set...'
+				# transform to correct format
+				training_set = io.loadmat(parameter.trainingSetfile[key], mat_dtype=True)[key]
+				return [tuple(training_set[i]) for i in range(0,len(training_set))]
+		else:
+			pass

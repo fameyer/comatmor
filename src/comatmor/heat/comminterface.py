@@ -106,10 +106,8 @@ class comminterface(object):
 
                 # Create lincomboperator for all involved matrices
                 stiffOps, rhsOps, stiffPops, rhsPops = [], [], [], []
-                
                 # get stiffness matrices and rhs matrices
-                for key in parameter.stiffNames:
-                #for key in matDict[0]:
+		for key in parameter.stiffNames:
                         stiffOps.append(NumpyMatrixOperator(matDict[0][key][0]))
                         stiffPops.append(matDict[0][key][1])
                 for key in parameter.rhsNames:
@@ -186,3 +184,46 @@ class comminterface(object):
 				return [tuple(training_set[i]) for i in range(0,len(training_set))]
 		else:
 			pass
+
+	def getSignature(self, num_samples, steps, T):
+		"""
+		Construct signature for given RB object
+		"""
+		print 'Generating signature...' 
+		# create signature
+		sig = 'heatequation'
+		for key in self._matDict[0]:
+			sig = sig+'_'+key
+		sig = sig+'_'+str(num_samples)
+		sig = sig+'_'+str(steps)
+		sig = sig+'_'+str(T)
+		return sig  
+
+	def saveSignature(self, file, signature):
+		"""
+		Save signature for underlying object
+		"""
+		print 'Writing new signature to file...'
+		e = open(file,'a')
+		e.write(signature+'\n')
+		e.close()
+
+	def checkSignature(self, file, signature):
+		"""
+	 	Check if given signature has already been saved
+		"""
+		try:
+			print 'Checking signature...'
+			e = open(file,'r')
+			contents = e.readlines()
+			# check if signature already given
+			for i in contents:
+				if i == signature+'\n':
+					e.close()
+					return True
+			# No signature found
+			e.close()
+			return False
+		except:
+			print 'No signature file found...'
+			return False

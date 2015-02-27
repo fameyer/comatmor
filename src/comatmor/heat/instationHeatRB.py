@@ -27,6 +27,8 @@ from pymor.algorithms.basisextension import gram_schmidt_basis_extension
 from pymor.algorithms.basisextension import pod_basis_extension
 from pymor.algorithms.timestepping import ImplicitEulerTimeStepper
 
+from pymor.core.pickle import dump, load
+
 # local imports
 #from ..comminterface import comminterface as CI
 from comminterface import comminterface as CI
@@ -54,12 +56,18 @@ class instationHeatRB(object):
 		self._rd = None
 		# RB reconstructor
 		self._rc = None
+		# Default
+		self._save = False
 
 		# for inputmethod = disc call all necessary get-functions
 		if self._type == 'disc':
 			self.addMatrix()
 			self.getMass()
 			self.getU0()
+			# Bool to check whether saving is desired
+			self._save = True
+			# Given signature file
+			self._signFile = 'sign.txt'
 
 	def addMatrix(self, name=None, row=None, col=None, data=None, paramName=None, paramShape=None, paramRange=None):
 		"""
@@ -112,34 +120,21 @@ class instationHeatRB(object):
 		else:
 			pass
 
-	# moved to comminterface.py
-	#def assembleOperators(self):
-	#	"""
-	#	Assemble operators to be prepared for RB calculations 
-	#	"""
-	#	matDict = self._matDict
-	#
-	#	# Create lincomboperator for all involved matrices
-	#	stiffOps, rhsOps, stiffPops, rhsPops = [], [], [], []
-	#	# maybe improve method below - put it somewhere else prob. !!!
-	#	# get stiffness matrices and rhs matrices
-	#	for key in parameter.stiffNames:
-	#	#for key in matDict[0]:
-	#		stiffOps.append(NumpyMatrixOperator(matDict[0][key][0]))
-	#		stiffPops.append(matDict[0][key][1])
-	#	for key in parameter.rhsNames:
-	#		rhsOps.append(NumpyMatrixOperator(matDict[0][key][0].T))
-	#		rhsPops.append(matDict[0][key][1])
-	#
-	#	stiffOp = LincombOperator(stiffOps, coefficients=stiffPops)
-	#	rhsOp = LincombOperator(rhsOps,coefficients=rhsPops)
-	#	return stiffOp, rhsOp	
-
-	def constructRB(self, T=0, n=0):
+	def constructRB(self, num_samples = 10, T=0, steps=0):
 		"""
 		Construct reduced basis with end-time T and number of steps n
 		"""
 		print 'Constructing reduced basis...' 
+	
+		# check if reduced basis was already constructed before, then load it before contructing a new one
+		if self._save:
+			signature = self._CI.getSignature(num_samples, steps, T)
+			if self._CI.checkSignature(self._signFile,signature):
+				with open(signature,'r') as f:
+					self._rd, self._rc = load(f)
+					print 'Reduced basis and reconstructor already computed before, loading...'
+					return
+
 		# call assembleOperators and get right operators
 		stiffOp, rhsOp = self._CI.assembleOperators()
 		
@@ -148,19 +143,20 @@ class instationHeatRB(object):
 		paramRanges = self._matDict[2]
 		
 		# create timestepper
-		time_stepper = ImplicitEulerTimeStepper(n)
+		time_stepper = ImplicitEulerTimeStepper(steps)
 
 		# create mass matrix
 		#dimension = stiffOp.source.dim
 		#mass = NumpyMatrixOperator(np.eye(dimension))
 
-		#print stiffOp.assemble((4,2))._matrix
-		#print rhsOp.assemble((4,2))._matrix
+		#print stiffOp.assemble((4,2,1))._matrix
+		#print rhsOp.assemble((4,2,1))._matrix
 		#io.savemat('Rhs',{'r': rhsOp.assemble((4,2))._matrix})
 		#raw_input()
 
-		# create discretization
-		dis = InstationaryDiscretization(operator=stiffOp, rhs=rhsOp, initial_data=self._u0, T=T, time_stepper=time_stepper, mass=self._mass, products={'h1': stiffOp.assemble((1,1))})
+		# create discretization with induced norm
+		ones =tuple([1 for i in range(len(paramTypes))])
+		dis = InstationaryDiscretization(operator=stiffOp, rhs=rhsOp, initial_data=self._u0, T=T, time_stepper=time_stepper, mass=self._mass, products={'h1': stiffOp.assemble(ones)})
 
 		#io.savemat('mass',{'mass': self._mass._matrix})	
 		#exit()
@@ -180,12 +176,17 @@ class instationHeatRB(object):
 		print 'Do greedy search...'
 		
 		# greedy search to construct RB 		
-		self._rb = greedy(dis, reductor, paramSpace.sample_uniformly(10), use_estimator=False, extension_algorithm=pod_basis_extension, target_error=1e-10, max_extensions = 30, error_norm= lambda U: np.max(dis.h1_norm(U)) ) 
+		self._rb = greedy(dis, reductor, paramSpace.sample_uniformly(num_samples), use_estimator=False, extension_algorithm=pod_basis_extension, target_error=1e-10, max_extensions = 30, error_norm= lambda U: np.max(dis.h1_norm(U)) ) 
 		# get the reduced discretization and the reconstructor
 		self._rd, self._rc = self._rb['reduced_discretization'], self._rb['reconstructor']
 
 		print 'Greedy search successfull! Reduced basis has dimension: '+str(len(self._rb['basis']))
-
+		# If saving desired, save the reduced basis and the reconstructor to the disc
+		if self._save:
+			print 'Saving reduced basis and reconstructor...'
+			self._CI.saveSignature(self._signFile, signature) 
+			with open(signature, 'w') as f:
+				dump((self._rd, self._rc),f)		
 
 	def compute(self, training_set=None, error=False, file=None):
 		"""
@@ -205,6 +206,7 @@ class instationHeatRB(object):
 		if self._type == 'disc':
 			# Get training_set from disc
 		 	assert training_set == None	
+			print 'Computing solutions for given Training set in respect to reduced basis...'
 			training_set = self._CI.getTrainingSet()
 			solutions = {}
 			i = 0
@@ -226,28 +228,29 @@ class instationHeatRB(object):
 		"""
 		return self._rb
 	
-	def save(self, file=None):
-		"""
-		provide opportunity to save current object with pickle
-		perhaps think of deleting self._matDict first, 'cause reduced basis essential.
-		"""
-		# if no filename given, take standard one
-		if file==None:
-			# give fileName a local time stamp depending on the current day and time
-			t = time.localtime()
-			file = str(t[2])+'_'+str(t[1])+'_'+str(t[0])+'_'+str(t[3])+str(t[4])+'_StationRB.save'
-		# Save current object
-		e = open(file,'w')
-		pickle.dump(self,e)
-	
-	@staticmethod
-	def load(path):
-		"""
-		CLASS METHOD (no instance of class needed to call it)
-		Load existing stationRB object located in path
-		"""
-		e = open(path,'r')
-		return pickle.load(e)
+	# DEPRECATED
+	#def save(self, file=None):
+	#	"""
+	#	provide opportunity to save current object with pickle
+	#	perhaps think of deleting self._matDict first, 'cause reduced basis essential.
+	#	"""
+	#	# if no filename given, take standard one
+	#	if file==None:
+	#		# give fileName a local time stamp depending on the current day and time
+	#		t = time.localtime()
+	#		file = str(t[2])+'_'+str(t[1])+'_'+str(t[0])+'_'+str(t[3])+str(t[4])+'_StationRB.save'
+	#	# Save current object
+	#	e = open(file,'w')
+	#	pickle.dump(self,e)
+	#
+	#@staticmethod
+	#def load(path):
+	#	"""
+	#	CLASS METHOD (no instance of class needed to call it)
+	#	Load existing stationRB object located in path
+	#	"""
+	#	e = open(path,'r')
+	#	return pickle.load(e)
 	
 	def __str__(self):
 		"""

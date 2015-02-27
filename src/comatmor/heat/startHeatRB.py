@@ -5,7 +5,7 @@
 """startHeatRB
 
 Usage:
-  startHeatRB.py [--endtime=TIME] [--steps=STEPS]
+  startHeatRB.py [--endtime=TIME] [--steps=STEPS] [--samples=SAMPLES]
 
 Arguments:
   None
@@ -14,6 +14,9 @@ Options:
   --endtime=TIME	Use TIME as end-time for the instationary problem
 
   --steps=STEPS		STEPS to be performed during timestepping.
+
+  --samples=SAMPLES	Number of sample parameters, the reduced basis shall be constructed for
+
 """
 
 from docopt import docopt
@@ -26,20 +29,14 @@ def startHeatRB(args):
 	"""
 	T = float(args['--endtime'] or 1)
 	step_number = int(args['--steps'] or 10)
+	num_samples = int(args['--samples'] or 10)
 	# create stationRB object
 	rb = instationHeatRB(inputmethod = 'disc')
 			
-	# compute rb solution to with n steps and end-time T
-	rb.constructRB(T,step_number)
+	# construct RB basis for num_samples in parameterspace, n steps and end-time T
+	rb.constructRB(num_samples,T,step_number)
 
-	#print rb.getRB()
-
-	# One could also save the RB object
-	# rb.save()
-
-	# compute several solutions in rb setting and write to harddisc
-	#training_set =[(i,j) for i in range(1,50,5) for j in range(1,50,5)]
-	
+	# Compute solutions for given training_set	
 	rb.compute()
 
 if __name__ == '__main__':

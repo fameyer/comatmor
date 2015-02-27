@@ -20,9 +20,6 @@ function solutions= compute(model)
 % initialize right python interpreter
 pyversion /home/310191226/pymorDir/virt/bin/python
 
-% Get model from COMSOL server
-%model = ModelUtil.model('Model2'); % Model2 just for example
-
 % Get basic modelinfo
 modelinfo = mphmodel(model)
 
@@ -32,19 +29,24 @@ global sol pg T steps;
 sol = 'sol1';
 % plotgroup
 pg = 'pg1';
-% set endtime and stepsize
+% set num_samples(the reduced basis generation should consider), endtime and stepsize
 T = 1;
 steps = 10;
+num_samples = 10;
 
 % names of to varying parameters
 parameter = 'c';
 
+% user defined parameter_ranges for parameterfile
+paramRanges = ['(1,50)';'(1,50)'];
+
 % set training_set and write it to disc
 global training_set
 
-training_set = [[1.0,40.0];[40.0,1.0]];
+training_set = [[1.0,40.0]]; % Distinction by semicolon!
 save('training_set.mat','training_set')
-% mphsearch
+trainingName = '"training_set"';
+trainingPath = '"training_set.mat"';
 
 % Deactivate internal dofs to enable comparable results
 Shape = model.physics(modelinfo.physics).prop('ShapeProperty');
@@ -56,8 +58,12 @@ u0 = mphgetu(model,'solnum',1);
 MA = mphmatrix(model ,sol, 'Out', {'Null'},'initmethod','init');
 u0 = MA.Null'*u0;
 % Don't know why i didn't come
-%u0 = u0-1;
+u0 = u0-1;
+%u0 = ones(1144,1);
 save('u0.mat','u0');
+% strings to store names
+u0Name = '"u0"';
+u0Path = '"u0.mat"';
 
 % AFFINE DECOMPOSITION
 modelPhysics = model.physics(modelinfo.physics);
@@ -78,7 +84,9 @@ for i=1:10
         break
     end
 end
-
+% save matrixNames and filenames (path) to create parameterfile
+matrixNames = '';
+matrixPaths = '';
 % Save matrices
 for i=1:numb
     str = ['hteq',int2str(i)];
@@ -94,12 +102,14 @@ for i=1:numb
     % Save matrices to harddisc
     KName = ['Kc',int2str(i)];
     LName = ['Lc',int2str(i)];
+    matrixNames = [matrixNames; ['"',KName,'"']; ['"',LName,'"']];
     Kc = matlab.lang.makeValidName(KName);
     Lc = matlab.lang.makeValidName(LName);
     eval([Kc '= MA.Kc;']);
-    eval([Lc '= MA.Lc;']);
+    eval([Lc '= MA.Lc;']); 
     save([KName,'.mat'],KName)
     save([LName,'.mat'],LName)
+    matrixPaths=[matrixPaths; ['"',KName,'.mat"']; ['"',LName,'.mat"']];
     % delete matrices
     eval([Kc '= [];']);
     eval([Lc '= [];']);
@@ -108,8 +118,8 @@ for i=1:numb
 end
 
 % Go to default (later save state before perhaps?)
-modelPhysics.feature('hteq1') .set('c',1);
-modelPhysics.feature('hteq2').set('c',1);
+modelPhysics.feature('hteq1').set(parameter,1);
+modelPhysics.feature('hteq2').set(parameter,1);
 
 % Get other components
 MA = mphmatrix(model ,sol, ...
@@ -119,15 +129,69 @@ MA = mphmatrix(model ,sol, ...
 % Damping matrix
 Dc = MA.Dc;
 save('Dc.mat','Dc')
+dampName = '"Dc"';
+dampPath = '"Dc.mat"';
+
+% Create parameterfile for given problem
+paramFile = fopen('parameterHeateq.py','w');
+fprintf(paramFile,'matfile = {');
+% for matDict
+length(matrixNames(:,1))
+matrixNames
+matrixPaths
+
+for i=1:length(matrixNames(:,1))
+    % Insert correct paramRanges (parameter are the same for 
+    j = round(i/2);
+    % create ci for parameternames in parameterType in pymor
+    varName = ['"c',int2str(j),'"'];
+    fprintf(paramFile,[matrixNames(i,:),':','(',matrixPaths(i,:),',','[',varName,']',',','[1]',',','[',paramRanges(j,:),'])']);
+    if i==length(matrixNames(:,1))
+        break
+    end
+    fprintf(paramFile,',');
+end
+fprintf(paramFile,'}\n');
+% for stiffNames
+fprintf(paramFile,'stiffNames=('); 
+for i=1:2:length(matrixNames(:,1))
+    fprintf(paramFile,matrixNames(i,:));
+    if i==length(matrixNames(:,1))-1
+        break
+    end
+    fprintf(paramFile,',');
+end
+fprintf(paramFile,')\n');
+% for rhsNames
+fprintf(paramFile,'rhsNames=('); 
+for i=2:2:length(matrixNames(:,1))
+    fprintf(paramFile,matrixNames(i,:));
+    if i==length(matrixNames(:,1))
+        break
+    end
+    fprintf(paramFile,',');
+end
+fprintf(paramFile,')\n');
+%u0file
+fprintf(paramFile,['u0file={',u0Name,':',u0Path,'}\n']);
+%massfile
+fprintf(paramFile,['massfile={',dampName,':',dampPath,'}\n']);
+%trainingSetfile
+fprintf(paramFile,['trainingSetfile={',trainingName,':',trainingPath,'}']);
 
 % Call python script
 endtime =['--endtime=',num2str(T)];
 step_number = ['--steps=',int2str(steps)];
-system(['source /home/310191226/pymorDir/virt/bin/activate && python startHeatRB.py',' ',endtime,' ',step_number])
+samples = ['--samples=',int2str(num_samples)];
+system(['source /home/310191226/pymorDir/virt/bin/activate && python startHeatRB.py',' ',endtime,' ',step_number,' ',samples]);
 
-% Load solutions from harddisk 
+% Load solutions from harddisk as struct M, ensure right numbering
 % As struct M
-M = load('RBsolutions.mat');
+for i=1:length(training_set(:,1))
+    name=['mu',int2str(i)];
+    inter = load('RBsolutions.mat',name);
+    M.(name) = inter.(name);
+end
 
 % Calculate final solution(scale+boundary conditions)
 names = fieldnames(M);

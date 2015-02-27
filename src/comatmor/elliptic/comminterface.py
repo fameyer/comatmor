@@ -104,59 +104,71 @@ class comminterface(object):
 
                 # Create lincomboperator for all involved matrices
                 stiffOps, rhsOps, stiffPops, rhsPops = [], [], [], []
-                # maybe improve method below - put it somewhere else prob. !!!
+                
                 # get stiffness matrices and rhs matrices
-                for key in parameter.stiffNames:
-                #for key in matDict[0]:
-                        stiffOps.append(NumpyMatrixOperator(matDict[0][key][0]))
-                        stiffPops.append(matDict[0][key][1])
-                for key in parameter.rhsNames:
-                        print(matDict[0][key][0].dtype)
-                        rhsOps.append(NumpyMatrixOperator(matDict[0][key][0].T))
-                        rhsPops.append(matDict[0][key][1])
-                stiffOp = LincombOperator(stiffOps, coefficients=stiffPops)
-                rhsOp = LincombOperator(rhsOps,coefficients=rhsPops)
-                return stiffOp, rhsOp
+		for key in parameter.stiffNames:
+			stiffOps.append(NumpyMatrixOperator(matDict[0][key][0]))
+			stiffPops.append(matDict[0][key][1])
+		for key in parameter.rhsNames:
+			print(matDict[0][key][0].dtype)
+			rhsOps.append(NumpyMatrixOperator(matDict[0][key][0].T))
+			rhsPops.append(matDict[0][key][1])
+		stiffOp = LincombOperator(stiffOps, coefficients=stiffPops)
+		rhsOp = LincombOperator(rhsOps,coefficients=rhsPops)
+		return stiffOp, rhsOp
 
-	def getMat(self):
-		"""
-		DOC ME
-		"""
-		return self._matDict
-	
-	def pushRhs(self):
-		"""
-		DOC ME
-		"""
-		# do that better without for-loop
-		if self._type == 'disc':
-			for key in parameter.rhsfile:
-				print 'Reading rhs...'
-				return io.loadmat(parameter.rhsfile[key])[key]
-		else:
-			pass
+		def getMat(self):
+			"""
+			DOC ME
+			"""
+			return self._matDict
+		
+		def pushRhs(self):
+			"""
+			DOC ME
+			"""
+			# do that better without for-loop
+			if self._type == 'disc':
+				for key in parameter.rhsfile:
+					print 'Reading rhs...'
+					return io.loadmat(parameter.rhsfile[key])[key]
+			else:
+				pass
 
-	def readU0(self):
-		"""
-		Read initial solution for time-dependent problems
-		"""
-		if self._type == 'disc':
-			for key in parameter.u0file:
-				print 'Reading initial solution...'
-				return io.loadmat(parameter.u0file[key])[key]
-		else:
-			pass
+		def readU0(self):
+			"""
+			Read initial solution for time-dependent problems
+			"""
+			if self._type == 'disc':
+				for key in parameter.u0file:
+					print 'Reading initial solution...'
+					return io.loadmat(parameter.u0file[key])[key]
+			else:
+				pass
 
-	def writeSolutions(self, u, file=None):
-		"""
-		Write given u to disc
-		"""		
+		def writeSolutions(self, u, file=None):
+			"""
+			Write given u to disc
+			"""		
 
-		assert self._type == 'disc'
-		assert isinstance(u,dict) 
-	
-		# check if user-given filename is available, otherwise use default
-		if file == None:
-			io.savemat('RBsolutions',u)
-		else:
-			io.savemat(file,u)
+			assert self._type == 'disc'
+			assert isinstance(u,dict) 
+		
+			# check if user-given filename is available, otherwise use default
+			if file == None:
+				io.savemat('RBsolutions',u)
+			else:
+				io.savemat(file,u)
+
+		def getTrainingSet(self):
+                	"""
+                	Read training-set from disc
+                	"""
+                	if self._type == 'disc':
+                        	for key in parameter.trainingSetfile:
+                                	print 'Obtain training_set...'
+                                	# transform to correct format
+                                	training_set = io.loadmat(parameter.trainingSetfile[key], mat_dtype=True)[key]
+               				return [tuple(training_set[i]) for i in range(0,len(training_set))]
+                	else:
+                        	pass

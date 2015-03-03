@@ -33,7 +33,7 @@ from pymor.core.pickle import dump, load
 #from ..comminterface import comminterface as CI
 from comminterface import comminterface as CI
 
-class instationHeatRB(object):
+class IRTRB(object):
 	"""
 	DOC ME
 	"""

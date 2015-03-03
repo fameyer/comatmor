@@ -5,13 +5,14 @@
 """startRB
 
 Usage:
-  startHeatRB.py
+  startHeatRB.py [--samples=SAMPLES]
 
 Arguments:
   None
 
 Options:
-  None
+  --samples=SAMPLES     Number of sample parameters, the reduced basis shall be constructed for
+
 """
 
 from docopt import docopt
@@ -22,17 +23,15 @@ def startRB(args):
 	"""
 	DOC ME
 	"""
+	num_samples = int(args['--samples'] or 10)
 
 	# create stationRB object
 	rb = ellipticRB(inputmethod = 'disc')
 			
 	# compute rb solution
-	rb.constructRB(10)
+	rb.constructRB(num_samples)
 
-	# One could also save the RB object
-	# rb.save()
-
-	rb.compute()#training_set)
+	rb.compute()
 
 if __name__ == '__main__':
 	# parse arguments

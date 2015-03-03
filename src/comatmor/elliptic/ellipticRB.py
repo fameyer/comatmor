@@ -26,6 +26,8 @@ from pymor.algorithms.greedy import greedy
 from pymor.algorithms.basisextension import trivial_basis_extension
 from pymor.algorithms.basisextension import gram_schmidt_basis_extension
 
+from pymor.core.pickle import dump, load
+
 # comatmor imports
 #from ..comminterface import comminterface as CI
 from comminterface import comminterface as CI
@@ -52,10 +54,16 @@ class ellipticRB(object):
 		self._rd = None
 		# RB reconstructor
 		self._rc = None
+		# Default
+		self._save = False
 
 		# for inputmethod = disc call all necessary get-functions
 		if self._type == 'disc':
 			self.addMatrix()
+                        # Bool to check whether saving is desired
+                        self._save = True
+                        # Given signature file
+                        self._signFile = 'sign.txt'	
 
 	def addMatrix(self, name=None, row=None, col=None, data=None, paramName=None, paramShape=None, paramRange=None):
 		"""
@@ -120,6 +128,16 @@ class ellipticRB(object):
 		"""
 		print 'Constructing reduced basis...' 
 
+                # check if reduced basis was already constructed before, then load it before contructing a new one
+                if self._save:
+                        signature = self._CI.getSignature(num_samples, steps, T)
+                        if self._CI.checkSignature(self._signFile,signature):
+                                with open(signature,'r') as f:
+                                        self._rd, self._rc = load(f)
+                                        print 'Reduced basis and reconstructor already computed before, loading...'
+                                        return
+
+
                 # call assembleOperators and get right operators
                 stiffOp, rhsOp = self._CI.assembleOperators()
 
@@ -148,29 +166,39 @@ class ellipticRB(object):
 
 		print 'Greedy search successfull! Reduced basis has dimension: '+str(len(self._rb['basis']))
 
-	def compute(self, training_set=None, error=False, file=None):
+                # If saving desired, save the reduced basis and the reconstructor to the disc
+                if self._save:
+                        print 'Saving reduced basis and reconstructor...'
+                        self._CI.saveSignature(self._signFile, signature)
+                        with open(signature, 'w') as f:
+                                dump((self._rd, self._rc),f)
+
+
+	def compute(self, parameter_set=None, error=False, file=None):
 		"""
 		Think about error estimators and parameters etc etc
-		Compute rb solutions for training set - with errors?
+		Compute rb solutions for parameter set - with errors?
 		"""
 		# assert right set structure
-		assert isinstance(training_set,np.ndarray) or isinstance(training_set, list) or training_set == None
+		assert isinstance(parameter_set,np.ndarray) or isinstance(parameter_set, list) or parameter_set == None
 		if self._type == 'direct': 
 			# just supports return of one solution so far!!! Due to matlab restrictions - or glue them all together in the end and decompose them in matlab
-			for mu in training_set:
+			for mu in parameter_set:
 				u = self._rd.solve(mu)
 				ur = self._rc.reconstruct(u)
 		
 				print ur
 				return ur	
 		if self._type == 'disc':
-			# Get training set from disc
-                        assert training_set == None
-			training_set = self._CI.getTrainingSet()
+			# Get parameter set from disc
+                        assert parameter_set == None
+			print 'Computing solutions for given parameter set in respect to reduced basis...'
+
+			parameter_set = self._CI.getTrainingSet()
 			solutions = {}
 			i = 0
 			# save solutions for all parameters	
-			for mu in training_set:
+			for mu in parameter_set:
 				i=i+1
 				u = self._rd.solve(mu)
 				# Use data function to transform NumpyVectorArray to standard NumpyArray
@@ -186,29 +214,6 @@ class ellipticRB(object):
 		DOC ME
 		"""
 		return self._rb
-	
-	def save(self, file=None):
-		"""
-		provide opportunity to save current object with pickle
-		perhaps think of deleting self._matDict first, 'cause reduced basis essential.
-		"""
-		# if no filename given, take standard one
-		if file==None:
-			# give fileName a local time stamp depending on the current day and time
-			t = time.localtime()
-			file = str(t[2])+'_'+str(t[1])+'_'+str(t[0])+'_'+str(t[3])+str(t[4])+'_StationRB.save'
-		# Save current object
-		e = open(file,'w')
-		pickle.dump(self,e)
-	
-	@staticmethod
-	def load(path):
-		"""
-		CLASS METHOD (no instance of class needed to call it)
-		Load existing stationRB object located in path
-		"""
-		e = open(path,'r')
-		return pickle.load(e)
 	
 	def __str__(self):
 		"""

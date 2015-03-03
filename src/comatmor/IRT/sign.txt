@@ -1,0 +1,2 @@
+heatequation_Kc1_Lc1_Lc2_Kc2_10_10_1.0_3353
+heatequation_Kc1_Lc1_Lc2_Kc2_10_10_1.0_47113

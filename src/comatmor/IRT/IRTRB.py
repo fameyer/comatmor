@@ -1,4 +1,4 @@
-# Class to apply pymor RB on an instationary, parabolic PDE
+# Class to apply pymor RB on the simplified IRT model
 # by Falk Meyer, 10.02.2015
 
 import pickle
@@ -62,7 +62,6 @@ class IRTRB(object):
 		# for inputmethod = disc call all necessary get-functions
 		if self._type == 'disc':
 			self.addMatrix()
-			self.getMass()
 			self.getU0()
 			# Bool to check whether saving is desired
 			self._save = True
@@ -83,19 +82,6 @@ class IRTRB(object):
 		"""
 		return self._CI.getMat()
 
-	# DEPRECATED
-	#def addRhs(self, rhs=None):
-	#	"""
-	#	DOC ME
-	#	"""
-	#	# also assert right dimension?
-	#	if rhs != None:
-	#		assert isinstance(rhs, np.ndarray)
-	#		self._rhs = NumpyMatrixOperator(rhs)
-	#	else:
-	#		# try to get rhs from matDictionary(has to be transposed!)
-	#		self._rhs = NumpyMatrixOperator(self._CI.pushRhs().T)
-
 	def getRhs(self):
 		"""
 		DOC ME
@@ -108,15 +94,6 @@ class IRTRB(object):
 		"""
 		if self._type == 'disc':
 			self._u0 = NumpyMatrixOperator(self._CI.readU0())
-		else:
-			pass
-
-	def getMass(self):
-		"""
-		Read mass matrix
-		"""
-		if self._type == 'disc':
-			self._mass = NumpyMatrixOperator(self._CI.readMass())
 		else:
 			pass
 
@@ -136,7 +113,7 @@ class IRTRB(object):
 					return
 
 		# call assembleOperators and get right operators
-		stiffOp, rhsOp = self._CI.assembleOperators()
+		stiffOp, rhsOp, massOp = self._CI.assembleOperators()
 		
 		# get parametertypes and ranges
 		paramTypes  = self._matDict[1]
@@ -156,7 +133,7 @@ class IRTRB(object):
 
 		# create discretization with induced norm
 		ones =tuple([1 for i in range(len(paramTypes))])
-		dis = InstationaryDiscretization(operator=stiffOp, rhs=rhsOp, initial_data=self._u0, T=T, time_stepper=time_stepper, mass=self._mass, products={'h1': stiffOp.assemble(ones)})
+		dis = InstationaryDiscretization(operator=stiffOp, rhs=rhsOp, initial_data=self._u0, T=T, time_stepper=time_stepper, mass=massOp, products={'h1': stiffOp.assemble(ones)})
 
 		#io.savemat('mass',{'mass': self._mass._matrix})	
 		#exit()
@@ -168,7 +145,7 @@ class IRTRB(object):
 		# create parameterSpace
 		paramSpace = CubicParameterSpace(parameter_type = paramTypes, ranges = paramRanges)
 		print 'Given parameterspace: '+str(paramSpace)
-
+		print next(paramSpace.sample_uniformly(2))
 		# create reductor
 		def reductor(discretization, rb, extends = None):
 			return reduce_generic_rb(dis, rb, extends=extends)
@@ -227,30 +204,6 @@ class IRTRB(object):
 		DOC ME
 		"""
 		return self._rb
-	
-	# DEPRECATED
-	#def save(self, file=None):
-	#	"""
-	#	provide opportunity to save current object with pickle
-	#	perhaps think of deleting self._matDict first, 'cause reduced basis essential.
-	#	"""
-	#	# if no filename given, take standard one
-	#	if file==None:
-	#		# give fileName a local time stamp depending on the current day and time
-	#		t = time.localtime()
-	#		file = str(t[2])+'_'+str(t[1])+'_'+str(t[0])+'_'+str(t[3])+str(t[4])+'_StationRB.save'
-	#	# Save current object
-	#	e = open(file,'w')
-	#	pickle.dump(self,e)
-	#
-	#@staticmethod
-	#def load(path):
-	#	"""
-	#	CLASS METHOD (no instance of class needed to call it)
-	#	Load existing stationRB object located in path
-	#	"""
-	#	e = open(path,'r')
-	#	return pickle.load(e)
 	
 	def __str__(self):
 		"""

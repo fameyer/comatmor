@@ -1,2 +1,2 @@
-from instationHeatRB import instationHeatRB
-import parameterHeateq
+from IRTRB import IRTRB
+import parameterIRT

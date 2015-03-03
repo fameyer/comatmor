@@ -1,6 +1,6 @@
-matfile = {"Kc1":("Kc1.mat",["c1"],[1],[(1,50)]),"Lc1":("Lc1.mat",["c1"],[1],[(1,50)]),"Kc2":("Kc2.mat",["c2"],[1],[(1,50)]),"Lc2":("Lc2.mat",["c2"],[1],[(1,50)])}
-stiffNames=("Kc1","Kc2")
-rhsNames=("Lc1","Lc2")
+matfile = {"KcSample":("KcSample.mat",["c"],[1],[(1,50)]),"LcSample":("LcSample.mat",["k"],[1],[(1,1)]),"Kc":("Kc.mat",["k"],[1],[(1,1)]),"Lc":("Lc.mat",["k"],[1],[(1,1)]), "DcSample": ("DcSample.mat",["da"],[1],[(1,50)]), "Dc": ("Dc.mat",["k"],[1],[(1,1)])}
+stiffNames=("KcSample","Kc")
+rhsNames=("LcSample","Lc")
 u0file={"u0":"u0.mat"}
-massfile={"Dc":"Dc.mat"}
+massname={"DcSample","Dc"}
 parameterSetfile={"parameter_set":"parameter_set.mat"}

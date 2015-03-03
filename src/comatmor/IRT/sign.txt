@@ -1,2 +1,1 @@
-heatequation_Kc1_Lc1_Lc2_Kc2_10_10_1.0_3353
-heatequation_Kc1_Lc1_Lc2_Kc2_10_10_1.0_47113
+IRT_Kc_Lc_DcSample_Dc_KcSample_LcSample_4_10_1.0_10215

@@ -21,7 +21,7 @@ from pymor.operators.constructions import LincombOperator
 
 # make that NICER
 #from comatmor.elliptic import parameterHeateq as parameter
-from comatmor.heat import parameterHeateq as parameter
+from comatmor.IRT import parameterIRT as parameter
 
 
 class comminterface(object):
@@ -105,7 +105,7 @@ class comminterface(object):
                 matDict = self._matDict
 
                 # Create lincomboperator for all involved matrices
-                stiffOps, rhsOps, stiffPops, rhsPops = [], [], [], []
+                stiffOps, rhsOps, massOps, stiffPops, rhsPops, massPops = [], [], [], [], [], []
                 # get stiffness matrices and rhs matrices
 		for key in parameter.stiffNames:
                         stiffOps.append(NumpyMatrixOperator(matDict[0][key][0]))
@@ -113,10 +113,14 @@ class comminterface(object):
                 for key in parameter.rhsNames:
                         rhsOps.append(NumpyMatrixOperator(matDict[0][key][0].T))
                         rhsPops.append(matDict[0][key][1])
+		for key in parameter.massname:
+			massOps.append(NumpyMatrixOperator(matDict[0][key][0]))
+			massPops.append(matDict[0][key][1])
 
                 stiffOp = LincombOperator(stiffOps, coefficients=stiffPops)
                 rhsOp = LincombOperator(rhsOps,coefficients=rhsPops)
-                return stiffOp, rhsOp
+		massOp = LincombOperator(massOps, coefficients=massPops)
+                return stiffOp, rhsOp, massOp
 
 	def getMat(self):
 		"""
@@ -133,17 +137,6 @@ class comminterface(object):
 			for key in parameter.rhsfile:
 				print 'Reading rhs...'
 				return io.loadmat(parameter.rhsfile[key])[key]
-		else:
-			pass
-	
-	def readMass(self):
-		"""
-		Read mass/damping \matrix
-		"""
-		if self._type == 'disc':
-			for key in parameter.massfile:
-				print 'Reading mass...'
-				return io.loadmat(parameter.massfile[key])[key]
 		else:
 			pass
 
@@ -191,7 +184,7 @@ class comminterface(object):
 		"""
 		print 'Generating signature...' 
 		# create signature
-		sig = 'heatequation'
+		sig = 'IRT'
 		dim = 0
 		for key in self._matDict[0]:
 			if dim == 0:

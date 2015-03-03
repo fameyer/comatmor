@@ -21,7 +21,7 @@ Options:
 
 from docopt import docopt
 
-from comatmor.heat import instationHeatRB
+from comatmor.IRT import IRTRB
 
 def startIRTRB(args):
 	"""
@@ -31,7 +31,7 @@ def startIRTRB(args):
 	step_number = int(args['--steps'] or 10)
 	num_samples = int(args['--samples'] or 10)
 	# create stationRB object
-	rb = instationHeatRB(inputmethod = 'disc')
+	rb = IRTRB(inputmethod = 'disc')
 			
 	# construct RB basis for num_samples in parameterspace, n steps and end-time T
 	rb.constructRB(num_samples,T,step_number)

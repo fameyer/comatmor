@@ -27,9 +27,9 @@ def startIRTRB(args):
 	"""
 	Script to start RB computation for given time and time steps, intended to be called by matlab.
 	"""
-	T = float(args['--endtime'] or 1)
-	step_number = int(args['--steps'] or 10)
-	num_samples = int(args['--samples'] or 10)
+	T = float(args['--endtime'] or 5)
+	step_number = int(args['--steps'] or 20)
+	num_samples = int(args['--samples'] or 4)
 	# create stationRB object
 	rb = IRTRB(inputmethod = 'disc')
 			

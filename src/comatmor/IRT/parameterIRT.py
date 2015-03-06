@@ -2,5 +2,5 @@ matfile = {"KcSample":("KcSample.mat",["c"],[1],[(1,50)]),"LcSample":("LcSample.
 stiffNames=("KcSample","Kc")
 rhsNames=("LcSample","Lc")
 u0file={"u0":"u0.mat"}
-massname={"DcSample","Dc"}
+massname=("DcSample","Dc")
 parameterSetfile={"parameter_set":"parameter_set.mat"}

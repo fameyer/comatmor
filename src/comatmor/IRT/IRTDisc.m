@@ -1,5 +1,5 @@
 % COMSOL-MATLAB-PYMOR interface for disc-based communication
-% Falk Meyer, 20.02.2015
+% Falk Meyer, 01.03.2015
 % Linked to model heatequationTime.m
 
 %model = ModelUtil.model('Model2');
@@ -49,7 +49,7 @@ paramRanges = [rhocSample_Range;kappaSample_Range];
 % set parameter_set and write it to disc
 global parameter_set
 
-parameter_set = [[1.0,1.0,1.0]]; % Distinction by semicolon!
+parameter_set = [[40.0,20.0,1.0]]; % Distinction by semicolon!
 save('parameter_set.mat','parameter_set')
 parameterName = '"parameter_set"';
 parameterPath = '"parameter_set.mat"';
@@ -59,17 +59,29 @@ Shape = model.physics(modelinfo.physics).prop('ShapeProperty');
 %Shape.set('boundaryFlux_temperature', 1, '0'); % for ht model
 Shape.set('boundaryFlux', 1, '0');
 
-% Get initial solution
+% Read index list of dirichlet indices (has tag index)
+indexDirichlet = load('dirichletIndex.mat');
+index = indexDirichlet.index;
+
+% % Get initial solution
 u0 = mphgetu(model,'solnum',1);
-MA = mphmatrix(model ,sol, 'Out', {'Null'},'initmethod','init');
-u0 = MA.Null'*u0;
+%MA = mphmatrix(model ,sol, 'Out', {'Null'},'initmethod','init');
+%u0 = MA.Null'*u0;
 % Don't know why i didn't come
-u0 = u0-1;
-%u0 = ones(1144,1);
+%u0 = u0-1;
+
+% Ensure Dirichlet conditions
+% for j=1:length(index)
+%       i = index(j);
+% %      u0(i+1:end+1) = u0(i:end);
+%       u0(i) = 50.0;
+% end
+
+%u0=20.0*ones(10284,1);
 save('u0.mat','u0');
-% strings to store names
-u0Name = '"u0"';
-u0Path = '"u0.mat"';
+% % strings to store names
+% u0Name = '"u0"';
+% u0Path = '"u0.mat"';
 
 % AFFINE DECOMPOSITION
 modelPhysics = model.physics(modelinfo.physics);
@@ -96,10 +108,28 @@ modelPhysics.feature('hteq3').set(parameterMass,0);
 modelPhysics.feature('hteq4').set(parameterStiff,0);
 modelPhysics.feature('hteq4').set(parameterMass,0);
 
-MA = mphmatrix(model ,sol, 'Out', {'Kc','Lc','Dc'},'initmethod','init');
-KcSample = MA.Kc;
-LcSample = MA.Lc;
-DcSample = MA.Dc;
+MA = mphmatrix(model ,sol, 'Out', {'K','L','D'},'initmethod','init');
+KcSample = MA.K;
+LcSample = MA.L;
+DcSample = MA.D;
+
+% Ensure Dirichlet conditions
+% for j=1:length(index)
+%     i = index(j);
+%     %KcSample(i+1:end+1,:) = KcSample(i:end,:);
+%     KcSample(i,:) = 0;
+%     %KcSample(:,i+1:end+1) = KcSample(:,i:end);
+%     %KcSample(:,i) = 0;
+%     KcSample(i,i) = 1;
+%     %DcSample(i+1:end+1,:) = DcSample(i:end,:);
+%     DcSample(i,:) = 0;
+%     %DcSample(:,i+1:end+1) = DcSample(:,i:end);
+%     %DcSample(:,i) = 0;
+%     DcSample(i,i) = 1;
+%     %LcSample(i+1:end+1) = LcSample(i:end);
+%     LcSample(i) = 1;
+% end
+
 save('KcSample.mat', 'KcSample');
 save('LcSample.mat', 'LcSample');
 save('DcSample.mat', 'DcSample');
@@ -115,21 +145,39 @@ modelPhysics.feature('hteq3').set(parameterMass,da3);
 modelPhysics.feature('hteq4').set(parameterStiff,c4);
 modelPhysics.feature('hteq4').set(parameterMass,da4);
 
-MA = mphmatrix(model ,sol, 'Out', {'Kc','Lc','Dc'},'initmethod','init');
-Kc = MA.Kc;
-Lc = MA.Lc;
-Dc = MA.Dc;
+MA = mphmatrix(model ,sol, 'Out', {'K','L','D'},'initmethod','init');
+Kc = MA.K;
+Lc = MA.L;
+Dc = MA.D;
+
+% Ensure Dirichlet conditions
+% for j=1:length(index)
+%     i = index(j);
+%     %Kc(i+1:end+1,:) = Kc(i:end,:);
+%     Kc(i,:) = 0;
+%     %Kc(:,i+1:end+1) = Kc(:,i:end);
+%     %Kc(:,i) = 0;
+%     Kc(i,i) = 1;
+%     %Dc(i+1:end+1,:) = Dc(i:end,:);
+%     Dc(i,:) = 0;
+%     %Dc(:,i+1:end+1) = Dc(:,i:end);
+%     %Dc(:,i) = 0;
+%     Dc(i,i) = 1;
+%     %Lc(i+1:end+1) = Lc(i:end);
+%     Lc(i) = 1;
+% end
+
 save('Kc.mat', 'Kc');
 save('Lc.mat', 'Lc');
 save('Dc.mat', 'Dc');
 
-% Go to default (later save state before perhaps?)
-%modelPhysics.feature('hteq1').set(parameter,1);
-%modelPhysics.feature('hteq2').set(parameter,1);
+% Go to default values
+modelPhysics.feature('hteq2').set(parameterStiff,1);
+modelPhysics.feature('hteq2').set(parameterMass,1);
 
 % Get other components
 MA = mphmatrix(model ,sol, ...
-'Out', {'Dc','Null','ud','uscale'},...
+'Out', {'Null','ud','uscale'},...
 'initmethod','init');
 
 % Call python script
@@ -158,15 +206,15 @@ end
 
 for i=1:numel(names)
     for j=1:num
-        solutions.(names{i})(:,j)=MA.Null*M.(names{i})(:,j);
-        solutions.(names{i})(:,j)=solutions.(names{i})(:,j)+MA.ud;
-        solutions.(names{i})(:,j)=(1+solutions.(names{i})(:,j)).*MA.uscale;
+        solutions.(names{i})(:,j)=M.(names{i})(:,j);%MA.Null*M.(names{i})(:,j);
+        %solutions.(names{i})(:,j)=solutions.(names{i})(:,j)+MA.ud;
+        %solutions.(names{i})(:,j)=(1+solutions.(names{i})(:,j)).*MA.uscale;
         % There was (1+...) in last eq 
+        %solutions.(names{i})(:,j)=20+solutions.(names{i})(:,j);
     end
 end
 
 end
-
 
 % Set and visualize solution in comsol and matlab
 % sel is the index of the solution you want to visualize

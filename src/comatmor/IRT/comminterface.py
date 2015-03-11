@@ -17,7 +17,7 @@ from pymor.parameters.base import Parameter
 from pymor.la.numpyvectorarray import NumpyVectorArray
 
 from pymor.operators.numpy import NumpyMatrixOperator
-from pymor.operators.constructions import LincombOperator
+from pymor.operators.constructions import LincombOperator, VectorFunctional
 
 # make that NICER
 #from comatmor.elliptic import parameterHeateq as parameter
@@ -113,9 +113,44 @@ class comminterface(object):
                 for key in parameter.rhsNames:
                         rhsOps.append(NumpyMatrixOperator(matDict[0][key][0].T))
                         rhsPops.append(matDict[0][key][1])
+
+		# Correct for Dirichlet data in rhs
+		dt = 0.25
+                L = io.loadmat('/home/310191226/pymorDir/comatmor/src/comatmor/IRT/dirichletIndex.mat')['index']
+		L = L[0]
+		lenl = len(L)
+
+		# FALK for dirichlet read in data
+    		# read values of dirichlet function
+   		f=open('/home/310191226/pymorDir/comatmor/src/comatmor/IRT/dirichlet.csv')
+ 		values = [];
+		for row in csv.reader(f,delimiter=','):
+			values.append(row)			
+      
+		diriRhs = NumpyMatrixOperator(np.zeros((1,rhsOps[0]._matrix.shape[1])))
+	        for j in range(0,lenl):
+	        	diriRhs._matrix[0,L[j]-1] = 50.0
+		rhsOps.append(diriRhs)
+		rhsPops.append(GenericParameterFunctional(lambda mu: mu['k'], parameter_type=matDict[1]))
 		for key in parameter.massname:
 			massOps.append(NumpyMatrixOperator(matDict[0][key][0]))
 			massPops.append(matDict[0][key][1])
+
+		# Shift RHS for dirichlet
+		#U0 = NumpyMatrixOperator(self.readU0())
+                U_d = NumpyVectorArray(self.readU0().T.copy())
+                for i in range(len(U_d.data[0])):
+	                if i+1 in L:
+        		        U_d.data[0][i] = 50.0
+	                else:
+        		        U_d.data[0][i] = 0.0 
+		
+                for key in parameter.massname:
+        	       rhsOps.append(VectorFunctional(NumpyMatrixOperator(matDict[0][key][0]).apply(U_d)*(-1)))
+ 	               rhsPops.append(matDict[0][key][1])
+                for key in parameter.stiffNames:
+                       rhsOps.append(VectorFunctional(NumpyMatrixOperator(matDict[0][key][0]).apply(U_d)*(-1)))
+                       rhsPops.append(matDict[0][key][1])
 
                 stiffOp = LincombOperator(stiffOps, coefficients=stiffPops)
                 rhsOp = LincombOperator(rhsOps,coefficients=rhsPops)

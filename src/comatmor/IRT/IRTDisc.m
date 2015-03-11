@@ -49,7 +49,7 @@ paramRanges = [rhocSample_Range;kappaSample_Range];
 % set parameter_set and write it to disc
 global parameter_set
 
-parameter_set = [[40.0,20.0,1.0]]; % Distinction by semicolon!
+parameter_set = [[1.0,1.0,1.0]]; % Distinction by semicolon!
 save('parameter_set.mat','parameter_set')
 parameterName = '"parameter_set"';
 parameterPath = '"parameter_set.mat"';
@@ -114,21 +114,21 @@ LcSample = MA.L;
 DcSample = MA.D;
 
 % Ensure Dirichlet conditions
-% for j=1:length(index)
-%     i = index(j);
+for j=1:length(index)
+     i = index(j);
 %     %KcSample(i+1:end+1,:) = KcSample(i:end,:);
-%     KcSample(i,:) = 0;
+      KcSample(i,:) = 0;
 %     %KcSample(:,i+1:end+1) = KcSample(:,i:end);
-%     %KcSample(:,i) = 0;
+      %KcSample(:,i) = 0;
 %     KcSample(i,i) = 1;
 %     %DcSample(i+1:end+1,:) = DcSample(i:end,:);
-%     DcSample(i,:) = 0;
+     DcSample(i,:) = 0;
 %     %DcSample(:,i+1:end+1) = DcSample(:,i:end);
 %     %DcSample(:,i) = 0;
 %     DcSample(i,i) = 1;
 %     %LcSample(i+1:end+1) = LcSample(i:end);
-%     LcSample(i) = 1;
-% end
+     LcSample(i) = 0.0;
+ end
 
 save('KcSample.mat', 'KcSample');
 save('LcSample.mat', 'LcSample');
@@ -151,21 +151,21 @@ Lc = MA.L;
 Dc = MA.D;
 
 % Ensure Dirichlet conditions
-% for j=1:length(index)
-%     i = index(j);
+ for j=1:length(index)
+     i = index(j);
 %     %Kc(i+1:end+1,:) = Kc(i:end,:);
-%     Kc(i,:) = 0;
+     Kc(i,:) = 0;
 %     %Kc(:,i+1:end+1) = Kc(:,i:end);
 %     %Kc(:,i) = 0;
-%     Kc(i,i) = 1;
+     Kc(i,i) = 1;
 %     %Dc(i+1:end+1,:) = Dc(i:end,:);
-%     Dc(i,:) = 0;
+     Dc(i,:) = 0;
 %     %Dc(:,i+1:end+1) = Dc(:,i:end);
 %     %Dc(:,i) = 0;
-%     Dc(i,i) = 1;
+     Dc(i,i) = 0;
 %     %Lc(i+1:end+1) = Lc(i:end);
-%     Lc(i) = 1;
-% end
+     Lc(i) = 0.0;
+ end
 
 save('Kc.mat', 'Kc');
 save('Lc.mat', 'Lc');

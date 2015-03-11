@@ -33,6 +33,7 @@ from pymor.core.pickle import dump, load
 # local imports
 #from ..comminterface import comminterface as CI
 from comminterface import comminterface as CI
+from problems import deaffinize_discretization
 
 class IRTRB(object):
 	"""
@@ -132,11 +133,6 @@ class IRTRB(object):
 		#io.savemat('Rhs',{'r': rhsOp.assemble((4,2))._matrix})
 		#raw_input()
 
-   	 	#L = io.loadmat('/home/310191226/pymorDir/comatmor/src/comatmor/IRT/dirichletIndex.mat')['index']
-    		#L = L[0]
-    		#lenl = len(L)
-		 
-
 		# create discretization with induced norm
 		ones =tuple([1 for i in range(len(paramTypes))])
 
@@ -151,9 +147,9 @@ class IRTRB(object):
 	        #A._matrix.eliminate_zeros()
 		#aksdjf = aksd
 
-    	        #L = io.loadmat('/home/310191226/pymorDir/comatmor/src/comatmor/IRT/dirichletIndex.mat')['index']
-    		#L = L[0]
-		#lenl = len(L)
+    	        L = io.loadmat('/home/310191226/pymorDir/comatmor/src/comatmor/IRT/dirichletIndex.mat')['index']
+    		L = L[0]
+		lenl = len(L)
 
 		#dt = 0.25
 		#M_dt_A = massOp + stiffOp*dt
@@ -162,15 +158,23 @@ class IRTRB(object):
 		#normFunc = lambda U: np.max([U.data[i].T*(massOp.assemble(ones)._matrix)*U.data[i] for i in range(1,20)])
 			
 		#for j in range(0,lenl):
-                
-                #	li = (M_dt_A._matrix[L[j]-1,:].nonzero())[1]
+                #	li = (stiffOp.assemble((1,1,1))_matrix[L[j]-1,:].nonzero())[1]
 	        #        for i in range(0,len(li)):
         	#                M_dt_A._matrix[L[j]-1,li[i]] = 0.0
                	#   		 M_dt_A._matrix[L[j]-1,L[j]-1] = 1.0
         	#M_dt_A._matrix.eliminate_zeros()
-	
 
-		dis = InstationaryDiscretization(operator=stiffOp, rhs=rhsOp, initial_data=self._u0, T=T, time_stepper=time_stepper, mass=massOp, products={'l2': stiffOp.assemble(ones)})
+		#Extract initial solution without Dirichlet solution
+		U_d = NumpyVectorArray(self._u0._matrix.T.copy())
+		for i in range(len(U_d.data[0])):
+  			if i+1 in L:
+                       		U_d.data[0][i] = 50.0
+               		else:
+                       		U_d.data[0][i] = 0.0 
+		UNull = NumpyMatrixOperator((self._u0._matrix.T - U_d.data[0]).T)
+	 	#ajdf=slkg	
+
+		dis = InstationaryDiscretization(operator=stiffOp, rhs=rhsOp, initial_data=UNull, T=T, time_stepper=time_stepper, mass=massOp, products={'l2': stiffOp.assemble(ones)})
 		#sdgsg = sdghs 
 		#L = np.linalg.cholesky(stiffOp.assemble(ones)._matrix.todense())
 		#print('is positive definite!')
@@ -195,10 +199,17 @@ class IRTRB(object):
 		#loese = dis.solve((1.0,1.0,1.0))
 		#io.savemat('loesung',{'loese':loese.data})
 		#exit()
-		#normFunc = lambda U: np.max([massOp.assemble(ones)._matrix*((U.data[i].T-U.data[i-1].T)/dt)+stiffOp.assemble(ones)._matrix*U.data[i].T for i in range(1,20)])
+		#normFunc = lambda U: np.max([massOp.assemble(ones)._matrix*((U.data[i].T-U.data[i-1].T)/dt)+stiffOp.assemble(ones)._matrix*U.data[i].T for i in range(1,21)])
 		#normFunc = lambda U: massOp.assemble(ones)._matrix*U.data[1]+dt*stiffOp.assemble(ones)._matrix
+		#shift = dis.operator.operators[0].source.empty()
+		#shift = NumpyVectorArray(np.array([0 for i in range(0,dis.operator.operators[0]._matrix.shape[0])]))
+		#for i in range(0,lenl):
+		#	shift.data[0][i] = 50.0
+		
+		#disa = deaffinize_discretization(dis,shift=shift)
+
 		# greedy search to construct RB 		
-		self._rb = greedy(dis, reductor, paramSpace.sample_uniformly(num_samples), use_estimator=False, extension_algorithm=partial(pod_basis_extension), target_error=1e-10, max_extensions = 20)#, error_norm=lambda U: np.max(dis.l2_norm(U)))  
+		self._rb = greedy(dis, reductor, paramSpace.sample_uniformly(num_samples), use_estimator=False, extension_algorithm=pod_basis_extension, target_error=1e-10, max_extensions = 10, error_norm=lambda U: np.max(dis.l2_norm(U)))  
 		# get the reduced discretization and the reconstructor
 		self._rd, self._rc = self._rb['reduced_discretization'], self._rb['reconstructor']
 		self._bas = self._rb['basis']
@@ -239,10 +250,13 @@ class IRTRB(object):
 				i=i+1
 				u = self._rd.solve(mu)
 				# Use data function to transform NumpyVectorArray to standard NumpyArray
+
+				# Add dirichlet values				
+
 				# Have to define valid matlab variable names
 				# 'mu'+str(int(mu*100))
 				solutions['mu'+str(i)]=(self._rc.reconstruct(u)).data
-				skajgs =sdfkasf
+				#skajgs =sdfkasf
 			# save solutions to disk
 			self._CI.writeSolutions(solutions,file)
 			

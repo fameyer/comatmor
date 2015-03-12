@@ -49,7 +49,7 @@ paramRanges = [rhocSample_Range;kappaSample_Range];
 % set parameter_set and write it to disc
 global parameter_set
 
-parameter_set = [[1.0,1.0,1.0]]; % Distinction by semicolon!
+parameter_set = [[40.0,20.0,1.0]]; % Distinction by semicolon!
 save('parameter_set.mat','parameter_set')
 parameterName = '"parameter_set"';
 parameterPath = '"parameter_set.mat"';
@@ -162,7 +162,7 @@ Dc = MA.D;
      Dc(i,:) = 0;
 %     %Dc(:,i+1:end+1) = Dc(:,i:end);
 %     %Dc(:,i) = 0;
-     Dc(i,i) = 0;
+%     Dc(i,i) = 0;
 %     %Lc(i+1:end+1) = Lc(i:end);
      Lc(i) = 0.0;
  end

@@ -3,6 +3,7 @@
 # by Falk Meyer, 10.02.2015
 
 import numpy as np
+import csv
 
 # Import methods to read sparse .mat files from matlab
 from scipy import sparse, io
@@ -83,6 +84,7 @@ class comminterface(object):
 				assert len(paramName)== 1
 			
 				# If just one scalar parameter given, we have to correct due to sparse scipy matrices
+				# For just one parameter so far
 				paramType = ParameterType({ paramName[0]: 0})
 					
 	                 	print 'Reading '+key+'...'
@@ -113,44 +115,58 @@ class comminterface(object):
                 for key in parameter.rhsNames:
                         rhsOps.append(NumpyMatrixOperator(matDict[0][key][0].T))
                         rhsPops.append(matDict[0][key][1])
+		for key in parameter.massname:
+			massOps.append(NumpyMatrixOperator(matDict[0][key][0]))
+			massPops.append(matDict[0][key][1])
 
-		# Correct for Dirichlet data in rhs
-		dt = 0.25
-                L = io.loadmat('/home/310191226/pymorDir/comatmor/src/comatmor/IRT/dirichletIndex.mat')['index']
+		# Correct for Dirichlet data in right-hand side
+		# Load given COMSOL-array to find dirichlet indices
+                L = io.loadmat('dirichletIndex.mat')['index']
 		L = L[0]
 		lenl = len(L)
 
 		# FALK for dirichlet read in data
     		# read values of dirichlet function
-   		f=open('/home/310191226/pymorDir/comatmor/src/comatmor/IRT/dirichlet.csv')
+   		f=open('dirichlet.csv')
  		values = [];
 		for row in csv.reader(f,delimiter=','):
 			values.append(row)			
       
+		# Add _t to parametertype
+		localtype = matDict[1].copy()
+		localtype['_t'] = 0
+
 		diriRhs = NumpyMatrixOperator(np.zeros((1,rhsOps[0]._matrix.shape[1])))
 	        for j in range(0,lenl):
-	        	diriRhs._matrix[0,L[j]-1] = 50.0
+	        	diriRhs._matrix[0,L[j]-1] = 1.0
+
 		rhsOps.append(diriRhs)
-		rhsPops.append(GenericParameterFunctional(lambda mu: mu['k'], parameter_type=matDict[1]))
-		for key in parameter.massname:
-			massOps.append(NumpyMatrixOperator(matDict[0][key][0]))
-			massPops.append(matDict[0][key][1])
+		rhsPops.append(GenericParameterFunctional(lambda mu, values=values: [mu['k']*float(values[i][1]) for i in range(0,len(values)) if mu['_t']==float(values[i][0])][0], parameter_type=localtype))
 
 		# Shift RHS for dirichlet
-		#U0 = NumpyMatrixOperator(self.readU0())
                 U_d = NumpyVectorArray(self.readU0().T.copy())
                 for i in range(len(U_d.data[0])):
 	                if i+1 in L:
-        		        U_d.data[0][i] = 50.0
+        		        U_d.data[0][i] = 1.0
 	                else:
         		        U_d.data[0][i] = 0.0 
-		
+	
+		# Subtract appropr. mass matrices from RHS	
                 for key in parameter.massname:
         	       rhsOps.append(VectorFunctional(NumpyMatrixOperator(matDict[0][key][0]).apply(U_d)*(-1)))
- 	               rhsPops.append(matDict[0][key][1])
+		       paramName = parameter.matfile[key][1]
+                       name = paramName[0]
+
+                       paramFunc = GenericParameterFunctional(lambda mu, name=name, values=values: [mu[name]*float(values[i][1]) for i in range(0,len(values)) if mu['_t']==float(values[i][0])][0], parameter_type = localtype)
+		       rhsPops.append(paramFunc)
+
+		# Subtract appropr. stiffness matrices from RHS
                 for key in parameter.stiffNames:
                        rhsOps.append(VectorFunctional(NumpyMatrixOperator(matDict[0][key][0]).apply(U_d)*(-1)))
-                       rhsPops.append(matDict[0][key][1])
+		       paramName = parameter.matfile[key][1]
+                       name = paramName[0]
+                       paramFunc = GenericParameterFunctional(lambda mu, name=name, values=values: [mu[name]*float(values[i][1]) for i in range(0,len(values)) if mu['_t']==float(values[i][0])][0], parameter_type = localtype)
+		       rhsPops.append(paramFunc)
 
                 stiffOp = LincombOperator(stiffOps, coefficients=stiffPops)
                 rhsOp = LincombOperator(rhsOps,coefficients=rhsPops)

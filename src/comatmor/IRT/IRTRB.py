@@ -124,45 +124,12 @@ class IRTRB(object):
 		# create timestepper
 		time_stepper = ImplicitEulerTimeStepper(steps)
 
-		# create mass matrix
-		#dimension = stiffOp.source.dim
-		#mass = NumpyMatrixOperator(np.eye(dimension))
-
-		#print stiffOp.assemble((4,2,1))._matrix
-		#print rhsOp.assemble((4,2,1))._matrix
-		#io.savemat('Rhs',{'r': rhsOp.assemble((4,2))._matrix})
-		#raw_input()
-
 		# create discretization with induced norm
 		ones =tuple([1 for i in range(len(paramTypes))])
-
-		#A = copy.copy(stiffOp.assemble(ones)+massOp.assemble(ones))
-		#A = A.assemble()
-	        #for j in range(0,lenl):
-                #print(j)
-                #	li = (A._matrix[L[j]-1,:].nonzero())[1]
-                #	for i in range(0,len(li)):
-                #        	A._matrix[L[j]-1,li[i]] = 0.0
-                #        	A._matrix[L[j]-1,L[j]-1] = 1.0
-	        #A._matrix.eliminate_zeros()
-		#aksdjf = aksd
 
     	        L = io.loadmat('/home/310191226/pymorDir/comatmor/src/comatmor/IRT/dirichletIndex.mat')['index']
     		L = L[0]
 		lenl = len(L)
-
-		#dt = 0.25
-		#M_dt_A = massOp + stiffOp*dt
-		#M_dt_A = M_dt_A.assemble(ones)
-
-		#normFunc = lambda U: np.max([U.data[i].T*(massOp.assemble(ones)._matrix)*U.data[i] for i in range(1,20)])
-			
-		#for j in range(0,lenl):
-                #	li = (stiffOp.assemble((1,1,1))_matrix[L[j]-1,:].nonzero())[1]
-	        #        for i in range(0,len(li)):
-        	#                M_dt_A._matrix[L[j]-1,li[i]] = 0.0
-               	#   		 M_dt_A._matrix[L[j]-1,L[j]-1] = 1.0
-        	#M_dt_A._matrix.eliminate_zeros()
 
 		#Extract initial solution without Dirichlet solution
 		U_d = NumpyVectorArray(self._u0._matrix.T.copy())
@@ -172,16 +139,16 @@ class IRTRB(object):
                		else:
                        		U_d.data[0][i] = 0.0 
 		UNull = NumpyMatrixOperator((self._u0._matrix.T - U_d.data[0]).T)
-	 	#ajdf=slkg	
 
-		dis = InstationaryDiscretization(operator=stiffOp, rhs=rhsOp, initial_data=UNull, T=T, time_stepper=time_stepper, mass=massOp, products={'l2': stiffOp.assemble(ones)})
-		#sdgsg = sdghs 
+		Normmatrix = NumpyMatrixOperator(io.loadmat('KcNorm.mat', mat_dtype=True)['Kc']) 
+
+		dis = InstationaryDiscretization(operator=stiffOp, rhs=rhsOp, initial_data=UNull, T=T, time_stepper=time_stepper, mass=massOp, products={'l2': Normmatrix})#stiffOp.assemble(ones)})
 		#L = np.linalg.cholesky(stiffOp.assemble(ones)._matrix.todense())
 		#print('is positive definite!')
 
-		#io.savemat('mass',{'mass': self._mass._matrix})	
+		#loese = dis.solve((1.0,1.0,1.0))
+		#io.savemat('loesung',{'loese':loese.data})
 		#exit()
-		#print dis.h1_norm
 
 		#R = dis.solve((1.0,40.0))
 		#self._CI.writeSolutions({'R': R.data},file='Test11')
@@ -196,18 +163,6 @@ class IRTRB(object):
 		
 		print 'Do greedy search...'
 		
-		#loese = dis.solve((1.0,1.0,1.0))
-		#io.savemat('loesung',{'loese':loese.data})
-		#exit()
-		#normFunc = lambda U: np.max([massOp.assemble(ones)._matrix*((U.data[i].T-U.data[i-1].T)/dt)+stiffOp.assemble(ones)._matrix*U.data[i].T for i in range(1,21)])
-		#normFunc = lambda U: massOp.assemble(ones)._matrix*U.data[1]+dt*stiffOp.assemble(ones)._matrix
-		#shift = dis.operator.operators[0].source.empty()
-		#shift = NumpyVectorArray(np.array([0 for i in range(0,dis.operator.operators[0]._matrix.shape[0])]))
-		#for i in range(0,lenl):
-		#	shift.data[0][i] = 50.0
-		
-		#disa = deaffinize_discretization(dis,shift=shift)
-
 		# greedy search to construct RB 		
 		self._rb = greedy(dis, reductor, paramSpace.sample_uniformly(num_samples), use_estimator=False, extension_algorithm=pod_basis_extension, target_error=1e-10, max_extensions = 10, error_norm=lambda U: np.max(dis.l2_norm(U)))  
 		# get the reduced discretization and the reconstructor

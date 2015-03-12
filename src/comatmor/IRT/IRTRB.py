@@ -1,12 +1,8 @@
 # Class to apply pymor RB on the simplified IRT model
-# by Falk Meyer, 10.02.2015
-
-import pickle
-import time
+# by Falk Meyer,12.03.2015
 
 import numpy as np
 from scipy import sparse, io
-import copy
 
 from functools import partial
 
@@ -26,7 +22,9 @@ from pymor.algorithms.greedy import greedy
 from pymor.algorithms.basisextension import trivial_basis_extension
 from pymor.algorithms.basisextension import gram_schmidt_basis_extension
 from pymor.algorithms.basisextension import pod_basis_extension
-from pymor.algorithms.timestepping import ImplicitEulerTimeStepper
+#from pymor.algorithms.timestepping import ImplicitEulerTimeStepper
+
+from timestepping import ImplicitEulerTimeStepper
 
 from pymor.core.pickle import dump, load
 
@@ -60,7 +58,7 @@ class IRTRB(object):
 		self._rc = None
 		# Default
 		self._save = False
-
+		
 		# for inputmethod = disc call all necessary get-functions
 		if self._type == 'disc':
 			self.addMatrix()
@@ -69,6 +67,10 @@ class IRTRB(object):
 			self._save = True
 			# Given signature file
 			self._signFile = 'sign.txt'
+			# Get dirichlet indices
+			self._dirichletIndex = self._CI.getDirichletIndex()
+			# Get dirichlet values over time
+			self._dirichletValues = self._CI.getDirichletValues()
 
 	def addMatrix(self, name=None, row=None, col=None, data=None, paramName=None, paramShape=None, paramRange=None):
 		"""
@@ -103,15 +105,20 @@ class IRTRB(object):
 		"""
 		Construct reduced basis with end-time T and number of steps n
 		"""
-		print 'Constructing reduced basis...' 
+		print('Constructing reduced basis...')
 	
+		# Save parameters for compute
+		self._num_samples = num_samples
+		self._T = T
+		self._steps = steps
+
 		# check if reduced basis was already constructed before, then load it before contructing a new one
 		if self._save:
 			signature = self._CI.getSignature(num_samples, steps, T)
 			if self._CI.checkSignature(self._signFile,signature):
 				with open(signature,'r') as f:
 					self._rd, self._rc = load(f)
-					print 'Reduced basis and reconstructor already computed before, loading...'
+					print('Reduced basis and reconstructor already computed before, loading...')
 					return
 
 		# call assembleOperators and get right operators
@@ -126,20 +133,21 @@ class IRTRB(object):
 
 		# create discretization with induced norm
 		ones =tuple([1 for i in range(len(paramTypes))])
-
-    	        L = io.loadmat('/home/310191226/pymorDir/comatmor/src/comatmor/IRT/dirichletIndex.mat')['index']
-    		L = L[0]
+	
+		# Get dirichlet indices
+    	        L = self._dirichletIndex
 		lenl = len(L)
 
-		#Extract initial solution without Dirichlet solution
+		# Extract initial solution without pure Dirichlet solution
 		U_d = NumpyVectorArray(self._u0._matrix.T.copy())
 		for i in range(len(U_d.data[0])):
   			if i+1 in L:
-                       		U_d.data[0][i] = 50.0
+                       		U_d.data[0][i] = self._u0._matrix[i]
                		else:
                        		U_d.data[0][i] = 0.0 
 		UNull = NumpyMatrixOperator((self._u0._matrix.T - U_d.data[0]).T)
 
+		# Get matrix to be used for error_norm in greedy algorithm
 		Normmatrix = NumpyMatrixOperator(io.loadmat('KcNorm.mat', mat_dtype=True)['Kc']) 
 
 		dis = InstationaryDiscretization(operator=stiffOp, rhs=rhsOp, initial_data=UNull, T=T, time_stepper=time_stepper, mass=massOp, products={'l2': Normmatrix})#stiffOp.assemble(ones)})
@@ -155,13 +163,13 @@ class IRTRB(object):
 		#exit()
 		# create parameterSpace
 		paramSpace = CubicParameterSpace(parameter_type = paramTypes, ranges = paramRanges)
-		print 'Given parameterspace: '+str(paramSpace)
-		print next(paramSpace.sample_uniformly(2))
+		print('Given parameterspace: '+str(paramSpace))
+
 		# create reductor
 		def reductor(discretization, rb, extends = None):
 			return reduce_generic_rb(dis, rb, extends=extends)
 		
-		print 'Do greedy search...'
+		print('Do greedy search...')
 		
 		# greedy search to construct RB 		
 		self._rb = greedy(dis, reductor, paramSpace.sample_uniformly(num_samples), use_estimator=False, extension_algorithm=pod_basis_extension, target_error=1e-10, max_extensions = 10, error_norm=lambda U: np.max(dis.l2_norm(U)))  
@@ -170,10 +178,10 @@ class IRTRB(object):
 		self._bas = self._rb['basis']
 		#sjkdg =adas
 
-		print 'Greedy search successfull! Reduced basis has dimension: '+str(len(self._rb['basis']))
+		print('Greedy search successfull! Reduced basis has dimension: '+str(len(self._rb['basis'])))
 		# If saving desired, save the reduced basis and the reconstructor to the disc
 		if self._save:
-			print 'Saving reduced basis and reconstructor...'
+			print('Saving reduced basis and reconstructor...')
 			self._CI.saveSignature(self._signFile, signature) 
 			with open(signature, 'w') as f:
 				dump((self._rd, self._rc),f)		
@@ -185,33 +193,42 @@ class IRTRB(object):
 		"""
 		# assert right set structure
 		assert isinstance(parameter_set,np.ndarray) or isinstance(parameter_set, list) or parameter_set == None
+		assert not self._rd is None and not self._rc is None
+
 		if self._type == 'direct': 
 			# just supports return of one solution so far!!! Due to matlab restrictions - or glue them all together in the end and decompose them in matlab
 			for mu in parameter_set:
 				u = self._rd.solve(mu)
 				ur = self._rc.reconstruct(u)
 		
-				print ur
 				return ur	
+
 		if self._type == 'disc':
 			# Get parameter_set from disc
 		 	assert parameter_set == None	
-			print 'Computing solutions for given parameter set in respect to reduced basis...'
+			print('Computing solutions for given parameter set in respect to reduced basis...')
 			parameter_set = self._CI.getParameterSet()
 			solutions = {}
 			i = 0
+
+			# Open files to get right dirichlet	
+			values = self._dirichletValues
+
+			L = self._dirichletIndex
+               		lenl = len(L)
+
 			# save solutions for all parameters	
 			for mu in parameter_set:
 				i=i+1
 				u = self._rd.solve(mu)
-				# Use data function to transform NumpyVectorArray to standard NumpyArray
-
-				# Add dirichlet values				
-
-				# Have to define valid matlab variable names
+				# Use data function to transform NumpyVectorArray to standard NumpyArra             			# Have to define valid matlab variable names
 				# 'mu'+str(int(mu*100))
 				solutions['mu'+str(i)]=(self._rc.reconstruct(u)).data
-				#skajgs =sdfkasf
+				
+				for j in range(0,len(solutions['mu'+str(i)])):
+			                for k in range(len(solutions['mu'+str(i)][j])):
+        			                if k+1 in L:
+	        	        	                solutions['mu'+str(i)][j][k] = float(values[j][1])			
 			# save solutions to disk
 			self._CI.writeSolutions(solutions,file)
 			

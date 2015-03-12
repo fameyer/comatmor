@@ -12,6 +12,7 @@ from scipy.sparse import csc_matrix
 
 # pymor includes
 from pymor.parameters.functionals import GenericParameterFunctional
+from pymor.parameters.functionals import ExpressionParameterFunctional
 from pymor.parameters.base import ParameterType
 from pymor.parameters.base import Parameter
 
@@ -97,7 +98,9 @@ class comminterface(object):
 				paramName = parameter.matfile[key][1]
 				print 'Reading parameter: '+paramName[0]
 				name = paramName[0]
-				paramFunc = GenericParameterFunctional(lambda mu, name=name: mu[name], parameter_type = self._matDict[1])
+				#paramFunc = GenericParameterFunctional(lambda mu, name=name: mu[name], parameter_type = self._matDict[1])
+				paramFunc = ExpressionParameterFunctional(name, parameter_type = self._matDict[1])
+
 				self._matDict[0][key] = (io.loadmat(parameter.matfile[key][0], mat_dtype=True)[key],paramFunc) 
 
         def assembleOperators(self):
@@ -121,27 +124,22 @@ class comminterface(object):
 
 		# Correct for Dirichlet data in right-hand side
 		# Load given COMSOL-array to find dirichlet indices
-                L = io.loadmat('dirichletIndex.mat')['index']
-		L = L[0]
+                L = self.getDirichletIndex()
 		lenl = len(L)
 
-		# FALK for dirichlet read in data
-    		# read values of dirichlet function
-   		f=open('dirichlet.csv')
- 		values = [];
-		for row in csv.reader(f,delimiter=','):
-			values.append(row)			
+		# read values of dirichlet function
+   		values = self.getDirichletValues()			
       
 		# Add _t to parametertype
 		localtype = matDict[1].copy()
 		localtype['_t'] = 0
-
+		
 		diriRhs = NumpyMatrixOperator(np.zeros((1,rhsOps[0]._matrix.shape[1])))
 	        for j in range(0,lenl):
 	        	diriRhs._matrix[0,L[j]-1] = 1.0
 
 		rhsOps.append(diriRhs)
-		rhsPops.append(GenericParameterFunctional(lambda mu, values=values: [mu['k']*float(values[i][1]) for i in range(0,len(values)) if mu['_t']==float(values[i][0])][0], parameter_type=localtype))
+		rhsPops.append(ExpressionParameterFunctional('k*_t', parameter_type=localtype))
 
 		# Shift RHS for dirichlet
                 U_d = NumpyVectorArray(self.readU0().T.copy())
@@ -156,19 +154,15 @@ class comminterface(object):
         	       rhsOps.append(VectorFunctional(NumpyMatrixOperator(matDict[0][key][0]).apply(U_d)*(-1)))
 		       paramName = parameter.matfile[key][1]
                        name = paramName[0]
-
-                       paramFunc = GenericParameterFunctional(lambda mu, name=name, values=values: [mu[name]*float(values[i][1]) for i in range(0,len(values)) if mu['_t']==float(values[i][0])][0], parameter_type = localtype)
-		       rhsPops.append(paramFunc)
+		       rhsPops.append(ExpressionParameterFunctional(name+'*_t', parameter_type=localtype))
 
 		# Subtract appropr. stiffness matrices from RHS
                 for key in parameter.stiffNames:
                        rhsOps.append(VectorFunctional(NumpyMatrixOperator(matDict[0][key][0]).apply(U_d)*(-1)))
 		       paramName = parameter.matfile[key][1]
                        name = paramName[0]
-                       paramFunc = GenericParameterFunctional(lambda mu, name=name, values=values: [mu[name]*float(values[i][1]) for i in range(0,len(values)) if mu['_t']==float(values[i][0])][0], parameter_type = localtype)
-		       rhsPops.append(paramFunc)
-
-                stiffOp = LincombOperator(stiffOps, coefficients=stiffPops)
+                       rhsPops.append(ExpressionParameterFunctional(name+'*_t', parameter_type=localtype))
+		stiffOp = LincombOperator(stiffOps, coefficients=stiffPops)
                 rhsOp = LincombOperator(rhsOps,coefficients=rhsPops)
 		massOp = LincombOperator(massOps, coefficients=massPops)
                 return stiffOp, rhsOp, massOp
@@ -228,6 +222,23 @@ class comminterface(object):
 				return [tuple(parameter_set[i]) for i in range(0,len(parameter_set))]
 		else:
 			pass
+
+	def getDirichletIndex(self, file = 'dirichletIndex.mat'):
+		"""
+		Read indices of dirichlet values from matlab saved file
+		"""
+		return (io.loadmat(file)['index'])[0]
+
+	def getDirichletValues(self, file='dirichlet.csv'):
+		"""
+		Read time-dependent values from comsol saved csv file
+		(First column time, second column value)
+		"""
+		f = open(file)
+		values = []
+		for row in csv.reader(f,delimiter=','):
+			values.append(row)
+		return values
 
 	def getSignature(self, num_samples, steps, T):
 		"""

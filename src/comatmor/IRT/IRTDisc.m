@@ -24,13 +24,12 @@ pyversion /home/310191226/pymorDir/virt/bin/python
 modelinfo = mphmodel(model)
 
 % parameters
-global sol pg T steps;
+global sol T steps;
 % fix solver nod
 sol = 'sol1';
-% plotgroup
-pg = 'pg1';
+
 % set num_samples(the reduced basis generation should consider), endtime and stepsize
-T = 5;
+T = 5.0;
 steps = 20;
 num_samples = 4;
 
@@ -49,7 +48,7 @@ paramRanges = [rhocSample_Range;kappaSample_Range];
 % set parameter_set and write it to disc
 global parameter_set
 
-parameter_set = [[40.0,20.0,1.0]]; % Distinction by semicolon!
+parameter_set = [[40.0,1.0,1.0]]; % Distinction by semicolon!
 save('parameter_set.mat','parameter_set')
 parameterName = '"parameter_set"';
 parameterPath = '"parameter_set.mat"';
@@ -78,10 +77,54 @@ u0 = mphgetu(model,'solnum',1);
 % end
 
 %u0=20.0*ones(10284,1);
-save('u0.mat','u0');
+%save('u0.mat','u0');
 % % strings to store names
 % u0Name = '"u0"';
 % u0Path = '"u0.mat"';
+
+% build up signature and test if new matrices are needed for computation
+sign=['IRT_Kc_Lc_DcSample_Dc_KcSample_LcSample_',int2str(num_samples),'_',int2str(steps),'_',num2str(5,'%1.1f'),'_',int2str(length(u0))];
+% corresponding indicator
+doSave = 1;
+
+% Check if sign was already defined
+try
+signId = fopen('sign.txt');
+tline = fgetl(signId);
+    while ischar(tline)
+        %disp(tline)
+        if strcmp(tline,sign)
+            doSave = 0;
+            break
+        end
+        tline = fgetl(signId);
+    end
+fclose(signId);
+catch
+    dosave = 1;
+end
+
+if doSave == 1
+    
+disp('Building affine decomposition and saving matrices to harddisc...')
+
+% save initial data
+save('u0.mat','u0');
+
+% save dirichlet indices
+% MA = mphmatrix(model ,sol, 'Out', {'ud'},'initmethod','init');
+% ud = MA.ud;
+% dirichletIndex = [];
+% for i=1:length(ud)
+%     if ud(i)~=0
+%         try
+%             dirichletIndex(end+1)=i;
+%         catch
+%             dirichletIndex(1)=i;
+%         end
+%     end
+% end
+% save('dirichletIndex.mat','dirichletIndex');
 
 % AFFINE DECOMPOSITION
 modelPhysics = model.physics(modelinfo.physics);
@@ -172,19 +215,28 @@ save('Lc.mat', 'Lc');
 save('Dc.mat', 'Dc');
 
 % Go to default values
-modelPhysics.feature('hteq2').set(parameterStiff,1);
-modelPhysics.feature('hteq2').set(parameterMass,1);
+%modelPhysics.feature('hteq2').set(parameterStiff,1);
+%modelPhysics.feature('hteq2').set(parameterMass,1);
+
+% End of matrix writing block
+else
+    disp('Do not save matrices again...')
+end
 
 % Get other components
 MA = mphmatrix(model ,sol, ...
 'Out', {'Null','ud','uscale'},...
 'initmethod','init');
 
+disp('Calling python script...')
+
 % Call python script
 endtime =['--endtime=',num2str(T)];
 step_number = ['--steps=',int2str(steps)];
 samples = ['--samples=',int2str(num_samples)];
 system(['source /home/310191226/pymorDir/virt/bin/activate && python startIRTRB.py',' ',endtime,' ',step_number,' ',samples]);
+
+disp('Load and convert solutions...')
 
 % Load solutions from harddisk as struct M, ensure right numbering
 % As struct M
@@ -218,10 +270,14 @@ end
 
 % Set and visualize solution in comsol and matlab
 % sel is the index of the solution you want to visualize
-function visualize(model,solutions,sel)
+function visualize(model,solutions,sel,pg)
 
 % get global variables
-global sol pg steps T parameter_set;
+global sol steps T parameter_set;
+% check whether plotgroup was set
+if (~exist('pg','var'))
+        pg = 'pg1';
+end
 
 names = fieldnames(solutions);
 
@@ -234,9 +290,11 @@ for i=1:(length(t))
     model.sol(sol).setU(i,solutions.(names{sel})(:,i));
 end
 
-model.sol(sol).createSolution;
+disp(['Visualize for plotgroup ',pg])
 
+model.sol(sol).createSolution;
 mphplot(model,pg,'rangenum',1);
+
 % Give figure title of seen parameter
 caption = ['Solution for parameter = (',num2str(parameter_set(sel,:)),')'];
 title(caption)

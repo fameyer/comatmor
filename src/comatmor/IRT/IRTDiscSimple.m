@@ -58,6 +58,10 @@ Shape = model.physics(modelinfo.physics).prop('ShapeProperty');
 %Shape.set('boundaryFlux_temperature', 1, '0'); % for ht model
 Shape.set('boundaryFlux', 1, '0');
 
+% Read index list of dirichlet indices (has tag index)
+indexDirichlet = load('dirichletIndex.mat');
+index = indexDirichlet.index;
+
 % % Get initial solution
 u0 = mphgetu(model,'solnum',1);
 %MA = mphmatrix(model ,sol, 'Out', {'Null'},'initmethod','init');
@@ -113,51 +117,32 @@ save('KcNorm.mat','Kc');
 save('u0.mat','u0');
 
 % save dirichlet indices
-MA = mphmatrix(model ,sol, 'Out', {'ud'},'initmethod','init');
-ud = MA.ud;
-index = [];
-for i=1:length(ud)
-    if ud(i)~=0
-        try
-            index(end+1)=i;
-        catch
-            index(1)=i;
-        end
-    end
-end
-save('dirichletIndex.mat','index');
+% MA = mphmatrix(model ,sol, 'Out', {'ud'},'initmethod','init');
+% ud = MA.ud;
+% dirichletIndex = [];
+% for i=1:length(ud)
+%     if ud(i)~=0
+%         try
+%             dirichletIndex(end+1)=i;
+%         catch
+%             dirichletIndex(1)=i;
+%         end
+%     end
+% end
+% save('dirichletIndex.mat','dirichletIndex');
 
 % AFFINE DECOMPOSITION
 modelPhysics = model.physics(modelinfo.physics);
 % Save previous parameters of non-sample area
-% Silver
 m = mphgetproperties(modelPhysics.feature('hteq1'));
 c1 = m.c;
 da1 = m.da;
-% Air
 m = mphgetproperties(modelPhysics.feature('hteq3'));
 c3 = m.c;
 da3 = m.da;
-% Teflon
 m = mphgetproperties(modelPhysics.feature('hteq4'));
 c4 = m.c;
 da4 = m.da;
-% Air 1
-m = mphgetproperties(modelPhysics.feature('hteq5'));
-c5 = m.c;
-da5 = m.da;
-% Air 2
-m = mphgetproperties(modelPhysics.feature('hteq6'));
-c6 = m.c;
-da6 = m.da;
-% Air 3
-m = mphgetproperties(modelPhysics.feature('hteq7'));
-c7 = m.c;
-da7 = m.da;
-% Teflon 1
-m = mphgetproperties(modelPhysics.feature('hteq8'));
-c8 = m.c;
-da8 = m.da;
 
 % Get matrices from sample
 % Sample heateq: hteq2
@@ -170,14 +155,6 @@ modelPhysics.feature('hteq3').set(parameterStiff,0);
 modelPhysics.feature('hteq3').set(parameterMass,0);
 modelPhysics.feature('hteq4').set(parameterStiff,0);
 modelPhysics.feature('hteq4').set(parameterMass,0);
-modelPhysics.feature('hteq5').set(parameterStiff,0);
-modelPhysics.feature('hteq5').set(parameterMass,0);
-modelPhysics.feature('hteq6').set(parameterStiff,0);
-modelPhysics.feature('hteq6').set(parameterMass,0);
-modelPhysics.feature('hteq7').set(parameterStiff,0);
-modelPhysics.feature('hteq7').set(parameterMass,0);
-modelPhysics.feature('hteq8').set(parameterStiff,0);
-modelPhysics.feature('hteq8').set(parameterMass,0);
 
 MA = mphmatrix(model ,sol, 'Out', {'K','L','D'},'initmethod','init');
 KcSample = MA.K;
@@ -215,14 +192,6 @@ modelPhysics.feature('hteq3').set(parameterStiff,c3);
 modelPhysics.feature('hteq3').set(parameterMass,da3);
 modelPhysics.feature('hteq4').set(parameterStiff,c4);
 modelPhysics.feature('hteq4').set(parameterMass,da4);
-modelPhysics.feature('hteq5').set(parameterStiff,c5);
-modelPhysics.feature('hteq5').set(parameterMass,da5);
-modelPhysics.feature('hteq6').set(parameterStiff,c6);
-modelPhysics.feature('hteq6').set(parameterMass,da6);
-modelPhysics.feature('hteq7').set(parameterStiff,c7);
-modelPhysics.feature('hteq7').set(parameterMass,da7);
-modelPhysics.feature('hteq8').set(parameterStiff,c8);
-modelPhysics.feature('hteq8').set(parameterMass,da8);
 
 MA = mphmatrix(model ,sol, 'Out', {'K','L','D'},'initmethod','init');
 Kc = MA.K;
@@ -259,6 +228,11 @@ else
     disp('Do not save matrices again...')
 end
 
+% Get other components
+MA = mphmatrix(model ,sol, ...
+'Out', {'Null','ud','uscale'},...
+'initmethod','init');
+
 disp('Calling python script...')
 
 % Call python script
@@ -268,11 +242,6 @@ samples = ['--samples=',int2str(num_samples)];
 system(['source /home/310191226/pymorDir/virt/bin/activate && python startIRTRB.py',' ',endtime,' ',step_number,' ',samples]);
 
 disp('Load and convert solutions...')
-
-% Get other components
-MA = mphmatrix(model ,sol, ...
-'Out', {'Null','ud','uscale'},...
-'initmethod','init');
 
 % Load solutions from harddisk as struct M, ensure right numbering
 % As struct M

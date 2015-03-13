@@ -93,21 +93,19 @@ def implicit_euler(A, F, M, U0, t0, t1, nt, mu=None, invert_options=None, num_va
     t = t0
     U = U0.copy()
 
-    # FALK for dirichlet read in data
     # read values of dirichlet function
     f=open('/home/310191226/pymorDir/comatmor/src/comatmor/IRT/dirichlet.csv')
     values = [];
     for row in csv.reader(f,delimiter=','):
 	values.append(row)	
+
     for n in xrange(nt):
         t += dt
-        #mu['_t'] = t
+
 	# Imply Dirichlet
 	mu['_t'] = [float(values[i][1]) for i in range(0,len(values)) if t==float(values[i][0])][0]
         if F_time_dep:
             dt_F = F.as_vector(mu) * dt
-	# FALK Correct
-	#RHS = copy.copy(M.apply(U,mu=mu) + dt_F)
 	
 	U = M_dt_A.apply_inverse(M.apply(U,mu=mu)+dt_F, mu=mu,options=invert_options)	
         while t - t0 + (min(dt, DT) * 0.5) >= len(R) * DT:

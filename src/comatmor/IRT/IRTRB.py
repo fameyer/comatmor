@@ -31,7 +31,6 @@ from pymor.core.pickle import dump, load
 # local imports
 #from ..comminterface import comminterface as CI
 from comminterface import comminterface as CI
-from problems import deaffinize_discretization
 
 class IRTRB(object):
 	"""
@@ -101,7 +100,7 @@ class IRTRB(object):
 		else:
 			pass
 
-	def constructRB(self, num_samples = 10, T=0, steps=0):
+	def constructRB(self, num_samples = 10, T=0, steps=0, max_extensions = 30, target_error =1e-10):
 		"""
 		Construct reduced basis with end-time T and number of steps n
 		"""
@@ -114,7 +113,7 @@ class IRTRB(object):
 
 		# check if reduced basis was already constructed before, then load it before contructing a new one
 		if self._save:
-			signature = self._CI.getSignature(num_samples, steps, T)
+			signature = self._CI.getSignature(num_samples, steps, T, max_extensions)
 			if self._CI.checkSignature(self._signFile,signature):
 				with open(signature,'r') as f:
 					self._rd, self._rc = load(f)
@@ -148,19 +147,10 @@ class IRTRB(object):
 		UNull = NumpyMatrixOperator((self._u0._matrix.T - U_d.data[0]).T)
 
 		# Get matrix to be used for error_norm in greedy algorithm
-		Normmatrix = NumpyMatrixOperator(io.loadmat('KcNorm.mat', mat_dtype=True)['Kc']) 
+		Normmatrix = NumpyMatrixOperator(io.loadmat('KNorm.mat', mat_dtype=True)['K']) 
 
-		dis = InstationaryDiscretization(operator=stiffOp, rhs=rhsOp, initial_data=UNull, T=T, time_stepper=time_stepper, mass=massOp, products={'l2': Normmatrix})#stiffOp.assemble(ones)})
-		#L = np.linalg.cholesky(stiffOp.assemble(ones)._matrix.todense())
-		#print('is positive definite!')
+		dis = InstationaryDiscretization(operator=stiffOp, rhs=rhsOp, initial_data=UNull, T=T, time_stepper=time_stepper, mass=massOp, products={'l2': Normmatrix})
 
-		#loese = dis.solve((1.0,1.0,1.0))
-		#io.savemat('loesung',{'loese':loese.data})
-		#exit()
-
-		#R = dis.solve((1.0,40.0))
-		#self._CI.writeSolutions({'R': R.data},file='Test11')
-		#exit()
 		# create parameterSpace
 		paramSpace = CubicParameterSpace(parameter_type = paramTypes, ranges = paramRanges)
 		print('Given parameterspace: '+str(paramSpace))
@@ -172,11 +162,10 @@ class IRTRB(object):
 		print('Do greedy search...')
 		
 		# greedy search to construct RB 		
-		self._rb = greedy(dis, reductor, paramSpace.sample_uniformly(num_samples), use_estimator=False, extension_algorithm=pod_basis_extension, target_error=1e-10, max_extensions = 10, error_norm=lambda U: np.max(dis.l2_norm(U)))  
+		self._rb = greedy(dis, reductor, paramSpace.sample_uniformly(num_samples), use_estimator=False, extension_algorithm=pod_basis_extension, target_error=target_error, max_extensions = max_extensions, error_norm=lambda U: np.max(dis.l2_norm(U))) 
 		# get the reduced discretization and the reconstructor
 		self._rd, self._rc = self._rb['reduced_discretization'], self._rb['reconstructor']
 		self._bas = self._rb['basis']
-		#sjkdg =adas
 
 		print('Greedy search successfull! Reduced basis has dimension: '+str(len(self._rb['basis'])))
 		# If saving desired, save the reduced basis and the reconstructor to the disc
@@ -211,7 +200,7 @@ class IRTRB(object):
 			solutions = {}
 			i = 0
 
-			# Open files to get right dirichlet	
+			# Open files to get right dirichlet values
 			values = self._dirichletValues
 
 			L = self._dirichletIndex
@@ -222,7 +211,6 @@ class IRTRB(object):
 				i=i+1
 				u = self._rd.solve(mu)
 				# Use data function to transform NumpyVectorArray to standard NumpyArra             			# Have to define valid matlab variable names
-				# 'mu'+str(int(mu*100))
 				solutions['mu'+str(i)]=(self._rc.reconstruct(u)).data
 				
 				for j in range(0,len(solutions['mu'+str(i)])):
@@ -234,12 +222,13 @@ class IRTRB(object):
 			
 	def getRB(self):
 		"""
-		DOC ME
+		Returns computed reduced basis
 		"""
+		assert self._rb 
 		return self._rb
 	
 	def __str__(self):
 		"""
-		Give detailed information about the class(which equation can be solved? etc.)
+		Information about the object
 		"""
-		pass
+		return 'Reduced basis method with greedy search basis generation method for the IRT-model'

@@ -118,7 +118,7 @@ class comminterface(object):
                 for key in parameter.rhsNames:
                         rhsOps.append(NumpyMatrixOperator(matDict[0][key][0].T))
                         rhsPops.append(matDict[0][key][1])
-		for key in parameter.massname:
+		for key in parameter.massNames:
 			massOps.append(NumpyMatrixOperator(matDict[0][key][0]))
 			massPops.append(matDict[0][key][1])
 
@@ -150,7 +150,7 @@ class comminterface(object):
         		        U_d.data[0][i] = 0.0 
 	
 		# Subtract appropr. mass matrices from RHS	
-                for key in parameter.massname:
+                for key in parameter.massNames:
         	       rhsOps.append(VectorFunctional(NumpyMatrixOperator(matDict[0][key][0]).apply(U_d)*(-1)))
 		       paramName = parameter.matfile[key][1]
                        name = paramName[0]
@@ -240,7 +240,7 @@ class comminterface(object):
 			values.append(row)
 		return values
 
-	def getSignature(self, num_samples, steps, T):
+	def getSignature(self, num_samples, steps, T, max_extensions):
 		"""
 		Construct signature for given RB object
 		"""
@@ -256,6 +256,7 @@ class comminterface(object):
 		sig = sig+'_'+str(steps)
 		sig = sig+'_'+str(T)
 		sig = sig+'_'+str(dim)
+		sig = sig+'_'+str(max_extensions)
 		return sig  
 
 	def saveSignature(self, file, signature):

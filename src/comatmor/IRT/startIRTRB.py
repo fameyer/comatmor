@@ -5,7 +5,7 @@
 """startHeatRB
 
 Usage:
-  startHeatRB.py [--endtime=TIME] [--steps=STEPS] [--samples=SAMPLES]
+  startHeatRB.py [--endtime=TIME] [--steps=STEPS] [--samples=SAMPLES] [--max_extensions=MAX] [--target_error=ERROR]
 
 Arguments:
   None
@@ -16,6 +16,10 @@ Options:
   --steps=STEPS		STEPS to be performed during timestepping.
 
   --samples=SAMPLES	Number of sample parameters, the reduced basis shall be constructed for
+
+  --max_extensions=MAX   MAX number of basis extensions in the reduced basis construction
+
+  --target_error=ERROR  Target error to reach during reduced basis construction
 
 """
 
@@ -30,11 +34,13 @@ def startIRTRB(args):
 	T = float(args['--endtime'] or 5)
 	step_number = int(args['--steps'] or 20)
 	num_samples = int(args['--samples'] or 4)
+	max_extensions = int(args['--max_extensions'] or 30)
+	target_error = float(args['--target_error'] or 1e-10)
 	# create stationRB object
 	rb = IRTRB(inputmethod = 'disc')
 			
 	# construct RB basis for num_samples in parameterspace, n steps and end-time T
-	rb.constructRB(num_samples,T,step_number)
+	rb.constructRB(num_samples,T,step_number, max_extensions, target_error)
 
 	# Compute solutions for given training_set	
 	rb.compute()

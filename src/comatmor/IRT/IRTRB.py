@@ -212,12 +212,12 @@ class IRTRB(object):
 				u = self._rd.solve(mu)
 				# Use data function to transform NumpyVectorArray to standard NumpyArra             			# Have to define valid matlab variable names
 				solutions['mu'+str(i)]=(self._rc.reconstruct(u)).data
-				
-				for j in range(0,len(solutions['mu'+str(i)])):
-			                for k in range(len(solutions['mu'+str(i)][j])):
-        			                if k+1 in L:
-	        	        	                solutions['mu'+str(i)][j][k] = float(values[j][1])			
-			# save solutions to disk
+				for k in range(len(solutions['mu'+str(i)][0])):
+					if k+1 in L:
+						solutions['mu'+str(i)][0][k] = float(values[0][1])				
+						for j in range(1,len(solutions['mu'+str(i)])):
+	        	        	                solutions['mu'+str(i)][j][k] = float(values[j-1][1])				
+			#save solutions to disk
 			self._CI.writeSolutions(solutions,file)
 			
 	def getRB(self):

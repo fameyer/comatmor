@@ -2,12 +2,12 @@
 % Falk Meyer, 01.03.2015
 % Linked to model IRTsimple.mph
 
-%model = ModelUtil.model('Model2');
-% Create function handles
+% model = ModelUtil.model('Model2');
+
 % Usage in command prompt: 
-% heatDisc = heatDisc
-% solutions = heatDisc.compute(...)
-% heatDisc.visualize(...)
+% IRTDisc = IRTDiscSimple
+% solutions = IRTDisc.compute(...)
+% IRTDisc.visualize(...)
 
 function IRTDisc = IRTDiscSimple()
 
@@ -22,7 +22,7 @@ modelinfo = mphmodel(model)
 
 % parameters
 global sol T steps;
-% fix solver nod
+% fix solver node
 sol = 'sol1';
 % names of to varying parameters
 parameterStiff = 'c';
@@ -32,9 +32,11 @@ parameterMass = 'da';
 daSample_Range = '(1,50)';
 cSample_Range = '(1,50)';
 
-% set num_samples(the reduced basis generation should consider), endtime and stepsize
+% set num_samples(the reduced basis generation should consider), endtime T
+% and number of steps
 T = 5.0;
 steps = 20;
+
 if (~exist('num_samples','var'))
     num_samples = 4;
 end
@@ -48,7 +50,7 @@ end
 % set parameter_set and write it to disc
 % parameter structure: [c,da,k] k==1.0 
 if (~exist('parameter_set','var'))
-    parameter_set = [[40.0,1.0,1.0];[1.0,40.0,1.0]]; % Distinction by semicolon!
+    parameter_set = [[40.0,20.0,1.0];[1.0,40.0,1.0]]; % Distinction by semicolon!
 end
 
 save('parameter_set.mat','parameter_set')
@@ -60,12 +62,8 @@ Shape = model.physics(modelinfo.physics).prop('ShapeProperty');
 %Shape.set('boundaryFlux_temperature', 1, '0'); % for ht model
 Shape.set('boundaryFlux', 1, '0');
 
-% % Get initial solution
+% Get initial solution
 u0 = mphgetu(model,'solnum',1);
-
-% strings to store names
-u0Name = '"u0"';
-u0Path = '"u0.mat"';
 
 % build up signature and test if new matrices are needed for computation
 sign=['IRT_D_K_L_DSample_LSample_KSample_',int2str(num_samples),'_',int2str(steps),'_',num2str(T,'%1.1f'),'_',int2str(length(u0)),'_',int2str(max_extensions)];
@@ -97,6 +95,11 @@ disp('Building affine decomposition and saving matrices to harddisc...')
 MA = mphmatrix(model ,sol, 'Out', {'K'},'initmethod','init');
 K = MA.K;
 save('KNorm.mat','K');
+
+
+% strings to store names
+u0Name = '"u0"';
+u0Path = '"u0.mat"';
 
 % save initial data
 save('u0.mat','u0');
@@ -150,6 +153,47 @@ KSample = MA.K;
 LSample = MA.L;
 DSample = MA.D;
 
+% Extract constant value matrices (which don't vary) for K and L
+modelPhysics.feature('hteq2').set(parameterStiff,10);
+MA = mphmatrix(model ,sol, 'Out', {'K','L'},'initmethod','init');
+KConst = MA.K;
+LConst = MA.L;
+
+% Adjust matrices
+[iSample, jSample, sSample] = find(KSample);
+sConst = nonzeros(KConst);
+
+for i=1:length(sSample)
+    if round(sSample(i),12) == round(sConst(i),12)
+        KSample(iSample(i),jSample(i)) = 0.0;
+    end
+end
+
+% Adjust matrices
+[iSample, jSample, sSample] = find(LSample);
+sConst = nonzeros(LConst);
+
+for i=1:length(sSample)
+    if sSample(i) == sConst(i)
+        LSample(iSample(i),jSample(i)) = 0.0;
+    end
+end
+
+% The same for mass matrix
+modelPhysics.feature('hteq2').set(parameterMass,10);
+MA = mphmatrix(model ,sol, 'Out', {'D'},'initmethod','init');
+DConst = MA.D;
+
+% Adjust matrices
+[iSample, jSample, sSample] = find(DSample);
+sConst = nonzeros(DConst);
+
+for i=1:length(sSample)
+    if round(sSample(i),12) == round(sConst(i),12)
+        DSample(iSample(i),jSample(i)) = 0.0;
+    end
+end
+
 % Ensure Dirichlet conditions
 for j=1:length(index)
      i = index(j);
@@ -173,16 +217,10 @@ modelPhysics.feature('hteq3').set(parameterMass,da3);
 modelPhysics.feature('hteq4').set(parameterStiff,c4);
 modelPhysics.feature('hteq4').set(parameterMass,da4);
 
-MA = mphmatrix(model ,sol, 'Out', {'K','L','D'},'initmethod','init');
+MA = mphmatrix(model, sol, 'Out', {'K','L','D'},'initmethod','init');
 K = MA.K;
 L = MA.L;
 D = MA.D;
-
-% Save names of matrices and parameters
-matrixNames = {'K','L', 'D', 'KSample', 'LSample', 'DSample'};
-paramNames = {'k','k','k','c','k','da'};
-matrixPaths = {'K.mat', 'L.mat', 'D.mat', 'KSample.mat', 'LSample.mat', 'DSample.mat'};
-paramRanges = {'(1,1)','(1,1)','(1,1)',cSample_Range,'(1,1)', daSample_Range};
 
 % Ensure Dirichlet conditions
 for j=1:length(index)
@@ -197,9 +235,14 @@ save('K.mat', 'K');
 save('L.mat', 'L');
 save('D.mat', 'D');
 
-% Go to default values
-%modelPhysics.feature('hteq2').set(parameterStiff,1);
-%modelPhysics.feature('hteq2').set(parameterMass,1);
+% Save names of matrices and corresponding parameters
+matrixNames = {'K','L', 'D', 'KSample', 'LSample', 'DSample'};
+paramNames = {'k','k','k','c','c','da'};
+matrixPaths = {'K.mat', 'L.mat', 'D.mat', 'KSample.mat', 'LSample.mat', 'DSample.mat'};
+paramRanges = {'(1,1)','(1,1)','(1,1)',cSample_Range, cSample_Range, daSample_Range};
+stiffNames = {'K', 'KSample'};
+massNames =  {'D', 'DSample'};
+rhsNames = {'L', 'LSample'};
 
 % Create parameterfile for given problem
 paramFile = fopen('parameterIRT.py','w');
@@ -216,9 +259,9 @@ end
 fprintf(paramFile,'}\n');
 % for stiffNames
 fprintf(paramFile,'stiffNames=('); 
-for i=1:3:length(matrixNames)
-    fprintf(paramFile,['"',matrixNames{i},'"']);
-    if i==(length(matrixNames)-2)
+for i=1:length(stiffNames)
+    fprintf(paramFile,['"',stiffNames{i},'"']);
+    if i==(length(stiffNames))
         break
     end
     fprintf(paramFile,',');
@@ -226,9 +269,9 @@ end
 fprintf(paramFile,')\n');
 % for rhsNames
 fprintf(paramFile,'rhsNames=('); 
-for i=2:3:length(matrixNames)
-    fprintf(paramFile,['"',matrixNames{i},'"']);
-    if i==(length(matrixNames)-1)
+for i=1:length(rhsNames)
+    fprintf(paramFile,['"',rhsNames{i},'"']);
+    if i==(length(rhsNames))
         break
     end
     fprintf(paramFile,',');
@@ -236,9 +279,9 @@ end
 fprintf(paramFile,')\n');
 % for massNames
 fprintf(paramFile,'massNames=('); 
-for i=3:3:length(matrixNames)
-    fprintf(paramFile,['"',matrixNames{i},'"']);
-    if i==length(matrixNames)
+for i=1:length(massNames)
+    fprintf(paramFile,['"',massNames{i},'"']);
+    if i==length(massNames)
         break
     end
     fprintf(paramFile,',');
@@ -271,46 +314,25 @@ disp('Load and convert solutions...')
 for i=1:length(parameter_set(:,1))
     name=['mu',int2str(i)];
     inter = load('RBsolutions.mat',name);
-    M.(name) = inter.(name);
+    M.(name) = inter.(name)';
 end
 
-
-% Get other components
-MA = mphmatrix(model ,sol, ...
-'Out', {'Null','ud','uscale'},...
-'initmethod','init');
-
-% Calculate final solution(scale+boundary conditions)
-names = fieldnames(M);
-num = length(M.(names{1})(:,1));
-
-% introduce new variable solutions to fit (possibly) adjustet size
-for i=1:numel(names)
-    M.(names{i}) = M.(names{i})';
-    solutions.(names{i})= zeros(length(MA.Null),numel(names));
-end
-
-for i=1:numel(names)
-    for j=1:num
-        solutions.(names{i})(:,j)=M.(names{i})(:,j);%MA.Null*M.(names{i})(:,j);
-        %solutions.(names{i})(:,j)=solutions.(names{i})(:,j)+MA.ud;
-        %solutions.(names{i})(:,j)=(1+solutions.(names{i})(:,j)).*MA.uscale;
-        % There was (1+...) in last eq 
-        %solutions.(names{i})(:,j)=20+solutions.(names{i})(:,j);
-    end
-end
+solutions = M;
 
 end
 
 % Set and visualize solution in comsol and matlab
 % sel is the index of the solution you want to visualize
-function visualize(model,solutions,sel,pg)
+function visualize(model,solutions,sel,time,pg)
 
 % get global variables
 global sol steps T;
 % check whether plotgroup was set
 if (~exist('pg','var'))
         pg = 'pg1';
+end
+if (~exist('time','var'))
+        time = 1;
 end
 
 names = fieldnames(solutions);
@@ -324,7 +346,7 @@ for i=1:(length(t))
     model.sol(sol).setU(i,solutions.(names{sel})(:,i));
 end
 
-disp(['Visualize for plotgroup ',pg])
+disp(['Visualize for plotgroup ',pg,' and timestep ',int2str(time)])
 
 model.sol(sol).createSolution;
 mphplot(model,pg,'rangenum',1);

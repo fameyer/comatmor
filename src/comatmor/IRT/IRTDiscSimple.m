@@ -136,7 +136,7 @@ m = mphgetproperties(modelPhysics.feature('hteq4'));
 c4 = m.c;
 da4 = m.da;
 
-% Get matrices from sample
+% Get matrices from sample, set rest to zero
 % Sample heateq: hteq2
 modelPhysics.feature('hteq2').set(parameterStiff,1);
 modelPhysics.feature('hteq2').set(parameterMass,1);
@@ -153,7 +153,7 @@ KSample = MA.K;
 LSample = MA.L;
 DSample = MA.D;
 
-% Extract constant value matrices (which don't vary) for K and L
+% Eliminate constant value matrixentries originating from boundarynodes for K and L
 modelPhysics.feature('hteq2').set(parameterStiff,10);
 MA = mphmatrix(model ,sol, 'Out', {'K','L'},'initmethod','init');
 KConst = MA.K;
@@ -164,7 +164,7 @@ LConst = MA.L;
 sConst = nonzeros(KConst);
 
 for i=1:length(sSample)
-    if round(sSample(i),12) == round(sConst(i),12)
+    if sSample(i) == sConst(i)
         KSample(iSample(i),jSample(i)) = 0.0;
     end
 end
@@ -176,21 +176,6 @@ sConst = nonzeros(LConst);
 for i=1:length(sSample)
     if sSample(i) == sConst(i)
         LSample(iSample(i),jSample(i)) = 0.0;
-    end
-end
-
-% The same for mass matrix
-modelPhysics.feature('hteq2').set(parameterMass,10);
-MA = mphmatrix(model ,sol, 'Out', {'D'},'initmethod','init');
-DConst = MA.D;
-
-% Adjust matrices
-[iSample, jSample, sSample] = find(DSample);
-sConst = nonzeros(DConst);
-
-for i=1:length(sSample)
-    if round(sSample(i),12) == round(sConst(i),12)
-        DSample(iSample(i),jSample(i)) = 0.0;
     end
 end
 

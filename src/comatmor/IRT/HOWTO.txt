@@ -1,0 +1,27 @@
+HOWTO IRT-model
+===============
+by Falk Meyer 23.03.2015
+
+This file is intended to give a rough description of the workflow for the
+application of RB methods for the IRT model. 
+
+Computations are based on following model: simpleIRT.mph
+
+SETUP
+-----
+
+1. Start the comsol to matlab livelink
+
+2. Start a comsol gui, load the model simpleIRT.mph and connect it to the livelink server (/File/Client Server/Connect to Server...)
+
+3. To ensure right Dirichlet-conditions in the python computations, save the dirichlet-values given in the simpleIRT-model under Model1/Definitions/Interpolation1 as dirichlet.csv in the given folder.
+
+4. Be sure about consistensy of given timesteps in dirichlet.csv and the input of endtime T and stepnumber n you want to compute a RB approximation for. I.e. T/n should be the stepsize in the list of dirichletvalues in simpleIRT.mph. 
+
+5. In matlab change the current folder to this one.
+
+6. In matlab load the current comsol model via 
+
+	model = ModelUtil.model('Model2');
+
+   where 'Model2' is to be replaced by the tag of the simpleIRT model on the server/in your gui. You can find the tag when viewing the 'Properties' tab of the overall simpleIRT.mph model.

@@ -1,7 +1,7 @@
 # This file was part of the pyMOR project (http://www.pymor.org).
 # Copyright Holders: Rene Milk, Stephan Rave, Felix Schindler
 # License: BSD 2-Clause License (http://opensource.org/licenses/BSD-2-Clause)
-# modified by Falk Meyer
+# modified by Falk Meyer for the comatmor model 
 
 """ This module provides generic time-stepping algorithms for the solution of
 instationary problems.
@@ -26,7 +26,7 @@ from pymor.la.interfaces import VectorArrayInterface
 from pymor.operators.interfaces import OperatorInterface
 from pymor.algorithms.timestepping import TimeStepperInterface
 
-# FALK include
+# local and additional includes
 from scipy import io
 import csv
 import copy
@@ -60,7 +60,7 @@ def implicit_euler(A, F, M, U0, t0, t1, nt, mu=None, invert_options=None, num_va
     assert isinstance(A, OperatorInterface)
     assert isinstance(F, (OperatorInterface, VectorArrayInterface))
     assert isinstance(M, OperatorInterface)
-    # FALK assert not M.parametric
+    # Changed assertion for M to not non parametric
     assert A.source == A.range == M.source == M.range
     num_values = num_values or nt + 1
     dt = (t1 - t0) / nt
@@ -112,6 +112,3 @@ def implicit_euler(A, F, M, U0, t0, t1, nt, mu=None, invert_options=None, num_va
             R.append(U)
 
     return R
-
-
-

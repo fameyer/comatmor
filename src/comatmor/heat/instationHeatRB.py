@@ -1,3 +1,21 @@
+#    Copyright (C) 2015 Falk Meyer
+#
+#    This program is free software; you can redistribute it and/or modify
+#    it under the terms of the GNU General Public License as published by
+#    the Free Software Foundation; either version 2 of the License, or
+#    (at your option) any later version.
+#
+#    This program is distributed in the hope that it will be useful,
+#    but WITHOUT ANY WARRANTY; without even the implied warranty of
+#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#    GNU General Public License for more details.
+#
+#    You should have received a copy of the GNU General Public License along
+#    with this program; if not, write to the Free Software Foundation, Inc.,
+#    51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+
+#===========================================================================
+
 # Class to apply pymor RB on an instationary, parabolic PDE
 # by Falk Meyer, 10.02.2015
 
@@ -82,19 +100,6 @@ class instationHeatRB(object):
 		Namen umbenennen vermoege besseren Wissens!
 		"""
 		return self._CI.getMat()
-
-	# DEPRECATED
-	#def addRhs(self, rhs=None):
-	#	"""
-	#	DOC ME
-	#	"""
-	#	# also assert right dimension?
-	#	if rhs != None:
-	#		assert isinstance(rhs, np.ndarray)
-	#		self._rhs = NumpyMatrixOperator(rhs)
-	#	else:
-	#		# try to get rhs from matDictionary(has to be transposed!)
-	#		self._rhs = NumpyMatrixOperator(self._CI.pushRhs().T)
 
 	def getRhs(self):
 		"""

@@ -102,8 +102,13 @@ def implicit_euler(A, F, M, U0, t0, t1, nt, mu=None, invert_options=None, num_va
     for n in xrange(nt):
         t += dt
 
-	# Imply Dirichlet
-	mu['_t'] = [float(values[i][1]) for i in range(0,len(values)) if t==float(values[i][0])][0]
+	# Imply Dirichlet - will be linearly interpolated when time values do not match
+	for i in range(1,len(values)):
+		if t >= float(values[i-1][0]) and t <= float(values[i][0]):
+			mu['_t'] = float(values[i-1][1]) + (float(values[i][1]) - float(values[i-1][1]))/(float(values[i][0])-float(values[i-1][0]))*(t-float(values[i-1][0]))
+			break
+
+	#mu['_t'] = [float(values[i][1]) for i in range(0,len(values)) if t==float(values[i][0])][0]
         if F_time_dep:
             dt_F = F.as_vector(mu) * dt
 	

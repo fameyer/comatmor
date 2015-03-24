@@ -15,13 +15,13 @@ function IRTDisc = IRTDiscSimple()
     IRTDisc.visualize = @visualize;
 end
 
-function solutions= compute(model, parameter_set, num_samples, max_extensions, target_error)
+function solutions= compute(model, T, steps, parameter_set, num_samples, max_extensions, target_error)
 
 % Get basic modelinfo
 modelinfo = mphmodel(model)
 
 % parameters
-global sol T steps;
+global sol TGlob stepsGlob;
 % fix solver node
 sol = 'sol1';
 % names of to varying parameters
@@ -34,9 +34,17 @@ cSample_Range = '(1,50)';
 
 % set num_samples(the reduced basis generation should consider), endtime T
 % and number of steps
-T = 5.0;
-steps = 20;
 
+if (~exist('T','var'))
+    TGlob = 5.0;
+else
+    TGlob = T;
+end
+if (~exist('steps','var'))
+    stepsGlob = 20;
+else
+    stepsGlob = steps;
+end
 if (~exist('num_samples','var'))
     num_samples = 4;
 end
@@ -57,49 +65,49 @@ save('parameter_set.mat','parameter_set')
 parameterName = '"parameter_set"';
 parameterPath = '"parameter_set.mat"';
 
-% Deactivate internal dofs to enable comparable results
-Shape = model.physics(modelinfo.physics).prop('ShapeProperty');
-%Shape.set('boundaryFlux_temperature', 1, '0'); % for ht model
-Shape.set('boundaryFlux', 1, '0');
-
-% Get initial solution
-u0 = mphgetu(model,'solnum',1);
-
+% Get number of Dofs
+info = mphxmeshinfo(model);
 % build up signature and test if new matrices are needed for computation
-sign=['IRT_D_K_L_DSample_LSample_KSample_',int2str(num_samples),'_',int2str(steps),'_',num2str(T,'%1.1f'),'_',int2str(length(u0)),'_',int2str(max_extensions)];
+signMatrix=['IRT_D_K_L_DSample_LSample_KSample_',int2str(info.fieldndofs)];
 % corresponding indicator
-doSave = 1;
+doSaveMatrix = 1;
 
+% First check if again matrices have to be safed
 % Check if sign was already defined
 try
 signId = fopen('sign.txt');
 tline = fgetl(signId);
     while ischar(tline)
         %disp(tline)
-        if strcmp(tline,sign)
-            doSave = 0;
+        if strncmp(tline,signMatrix,length(signMatrix))
+            doSaveMatrix = 0;
             break
         end
         tline = fgetl(signId);
     end
 fclose(signId);
 catch
-    doSave = 1;
+    doSaveMatrix = 1;
 end
 
-if doSave == 1
+if doSaveMatrix == 1
     
 disp('Building affine decomposition and saving matrices to harddisc...')
+
+% Deactivate internal dofs to enable comparable results
+Shape = model.physics(modelinfo.physics).prop('ShapeProperty');
+%Shape.set('boundaryFlux_temperature', 1, '0'); % for ht model
+Shape.set('boundaryFlux', 1, '0');
+
+% Run model once and get initial solution
+model.sol('sol1').run
+
+u0 = mphgetu(model,'solnum',1);
 
 % Save whole system matrix for error_norm
 MA = mphmatrix(model ,sol, 'Out', {'K'},'initmethod','init');
 K = MA.K;
 save('KNorm.mat','K');
-
-
-% strings to store names
-u0Name = '"u0"';
-u0Path = '"u0.mat"';
 
 % save initial data
 save('u0.mat','u0');
@@ -118,10 +126,6 @@ for i=1:length(ud)
      end
  end
 save('dirichletIndex.mat','index');
-
-% Read index list of dirichlet indices (has tag index)
-%indexDirichlet = load('dirichletIndex.mat');
-%index = indexDirichlet.index;
 
 % AFFINE DECOMPOSITION
 modelPhysics = model.physics(modelinfo.physics);
@@ -207,6 +211,15 @@ K = MA.K;
 L = MA.L;
 D = MA.D;
 
+% Adjust matrices
+[iSample, jSample, sSample] = find(L);
+
+for i=1:length(sSample)
+
+        L(iSample(i),jSample(i)) = 0.0;
+
+end
+
 % Ensure Dirichlet conditions
 for j=1:length(index)
      i = index(j);
@@ -220,6 +233,15 @@ save('K.mat', 'K');
 save('L.mat', 'L');
 save('D.mat', 'D');
 
+% Go to non-singular problem
+modelPhysics.feature('hteq2').set(parameterStiff,1);
+modelPhysics.feature('hteq2').set(parameterMass,1);
+
+% End of matrix writing block
+else
+    disp('Do not save matrices again...')
+end
+
 % Save names of matrices and corresponding parameters
 matrixNames = {'K','L', 'D', 'KSample', 'LSample', 'DSample'};
 paramNames = {'k','k','k','c','c','da'};
@@ -229,13 +251,17 @@ stiffNames = {'K', 'KSample'};
 massNames =  {'D', 'DSample'};
 rhsNames = {'L', 'LSample'};
 
+% strings to store names
+u0Name = '"u0"';
+u0Path = '"u0.mat"';
+
 % Create parameterfile for given problem
 paramFile = fopen('parameterIRT.py','w');
 fprintf(paramFile,'matfile = {');
 
 % Create correct matDict in parameterfile
 for i=1:length(matrixNames)
-    fprintf(paramFile,['"',matrixNames{i},'"',':','("',matrixPaths{i},'",','["',paramNames{i},'"],','[1]',',','[',paramRanges{i},'])']);
+    fprintf(paramFile,['"',matrixNames{i},'"',':','("',matrixPaths{i},'",','["',paramNames{i},'"],','[',paramRanges{i},'])']);
     if i==length(matrixNames)
         break
     end
@@ -277,16 +303,12 @@ fprintf(paramFile,['u0file={',u0Name,':',u0Path,'}\n']);
 %parameterSetfile
 fprintf(paramFile,['parameterSetfile={',parameterName,':',parameterPath,'}']);
 
-% End of matrix writing block
-else
-    disp('Do not save matrices again...')
-end
 
 disp('Calling python script...')
 
 % Call python script
-endtime =['--endtime=',num2str(T)];
-step_number = ['--steps=',int2str(steps)];
+endtime =['--endtime=',num2str(TGlob)];
+step_number = ['--steps=',int2str(stepsGlob)];
 samples = ['--samples=',int2str(num_samples)];
 extensions = ['--max_extensions=',int2str(max_extensions)];
 error = ['--target_error=',num2str(target_error)];
@@ -311,7 +333,8 @@ end
 function visualize(model,solutions,sel,time,pg)
 
 % get global variables
-global sol steps T;
+%global sol steps T;
+global sol stepsGlob TGlob;
 % check whether plotgroup was set
 if (~exist('pg','var'))
         pg = 'pg1';
@@ -323,7 +346,7 @@ end
 names = fieldnames(solutions);
 
 % set time frame
-t= 0:T/steps:T;
+t= 0:TGlob/stepsGlob:TGlob;
 %t = model.sol(sol).getPVals
 model.sol(sol).setPVals(t)
 

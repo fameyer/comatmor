@@ -96,8 +96,7 @@ class comminterface(object):
 
 				# Obtain information from the parameter file
 				paramName = parameter.matfile[key][1]
-				paramShape = parameter.matfile[key][2]
-				paramRange = parameter.matfile[key][3]
+				paramRange = parameter.matfile[key][2]
 				
 				# assert linear, scalar parameterdependence
 				assert len(paramName)== 1
@@ -270,10 +269,10 @@ class comminterface(object):
 			if dim == 0:
 				dim = self._matDict[0][key][0].shape[0]
 			sig = sig+'_'+key
+		sig = sig+'_'+str(dim)		
 		sig = sig+'_'+str(num_samples)
 		sig = sig+'_'+str(steps)
 		sig = sig+'_'+str(T)
-		sig = sig+'_'+str(dim)
 		sig = sig+'_'+str(max_extensions)
 		return sig  
 

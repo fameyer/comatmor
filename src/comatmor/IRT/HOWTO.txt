@@ -7,6 +7,13 @@ application of RB methods for the IRT model.
 
 Computations are based on following model: simpleIRT.mph
 
+GENERAL
+-------
+
+The given descriptions are provided to use the comatMOR module for reduced basis-generation for the IRT model. In general, the given implementation can easily be extended to solve other instationary problems given by parametrized heat- or general parabolic equations.
+
+For further information feel free to contact the author.
+
 SETUP
 -----
 
@@ -16,7 +23,9 @@ SETUP
 
 3. To ensure right Dirichlet-conditions in the python computations, save the dirichlet-values given in the simpleIRT-model under Model1/Definitions/Interpolation1 as dirichlet.csv in the given folder.
 
-4. Be sure about consistensy of given timesteps in dirichlet.csv and the input of endtime T and stepnumber n you want to compute a RB approximation for. I.e. T/n should be the stepsize in the list of dirichletvalues in simpleIRT.mph. 
+4. In the case the quotient time/steps does not match the exact stepsize in dirichlet.csv, the given dirichlet values will be interpolated linearly between the given ones. Be aware of this and ensure consistency if you do want to use the exact values. 
+   In any case, add a dirichlet value for time step 0.0 in the dirichlet.csv
+file if not given!
 
 5. In matlab change the current folder to this one.
 
@@ -25,3 +34,180 @@ SETUP
 	model = ModelUtil.model('Model2');
 
    where 'Model2' is to be replaced by the tag of the simpleIRT model on the server/in your gui. You can find the tag when viewing the 'Properties' tab of the overall simpleIRT.mph model.
+
+7. Get the function handles for the RB-computations e.g. by defining
+	
+	IRT = IRTDiscSimple()
+
+8. Before starting the reduced basis construction for the problem, run the
+simpleIRT.mph file once in your Comsol GUI. This is due to the need for an
+initial solution. If one is already given or you just want to use a saved
+reduced basis this step can be omitted. 
+
+9. Check line 301 of IRTDiscSimple.m and specify the python interpreter you
+want to use (which can import pyMOR). E.g.
+	
+	system(['python startIRTRB.py',...
+
+if you want to use the default interpreter of your system.
+
+10. You are good to go!
+
+
+RB-CONSTRUCTION AND COMPUTATION
+-------------------------------
+
+1. To construct a reduced basis and compute solutions in the reduced space for
+the parameters you like you have to call
+
+	solutions = IRT.compute(model)
+
+which start the computations with default arguments. In general the signature
+of the compute function is:
+
+	function solutions= compute(model, T, steps, parameter_set,
+num_samples, max_extensions, target_error)
+
+with the following arguments:
+	- model: The model transfered from simpleIRT.mph
+	- T = float, optional: The endtime in the timestepping algorithm
+	- steps = int, optional: Number of steps in the timestepping algorithm
+	- parameter_set, optional: set of parameters you want to compute solutions for,
+	  the general structure for this problem is:
+		
+		parameter_set = [[c1,da1,1.0];[c2,da2,1.0];...[cN,daN,1.0]]		
+
+	  where the ci are the diffusion coefficients and dai the mass coefficients in the sample heatequation. 1.0 in the third component indicates that all other matrices originating from the other model equations are not varied in the RB-construction process. 
+	
+	- num_samples = int, optional: Number of samples uniformly distributed in each parameter range (here for c and da coefficients in the sample heat equation). E.g. if chosen as 4 the RB greedy construction algorithms takes 16 snapshots into account. 
+	- max_extensions = int, optional: Maximal number of basis extensions in the
+	  greedy algorithm
+	- target_error = float, optional: As longs as the greedy-error is bigger as this bound, the basis generation continues (until either target_error or number max_extensions is reached).
+
+2. Solutions are then saved as a matlab struct, consisting of fields 'mui' for as a number between 1 and the number of elements in the parameter_set. The order of elements in solutions is consistent to the order of the parameter_set, e.g. solutions.mu1 belongs to parameter_set(1) and so on
+
+3. When computing solutions again, e.g. for an altered parameter_set, the given reduced basis is loaded from the harddisc. Therefore no redundant saving of matrices and no redundant constructionsof new reduced basis are done. See the SAVING AND LOADING chapter for further information on the matter
+
+VISUALIZATION
+-------------
+
+1. The computed solutions can be fully used for evaluation and visualization
+in comsol
+
+2. The IRTDiscSimple.m script provides following function to transfer to and visualize a computed solution in Comsol:
+
+	IRT.visualize(model,solutions,sel,time,pg)
+
+with the following components:
+	- model: The model transfered from simpleIRT.mph
+	- solutions = matlab.struct: The solutions struct returned by
+	  IRT.compute() method
+	- sel = int > 0: The index of the element the visualization should be done for,
+	  i.e. solutions.mu{sel}
+	- time = int >= 0, optional: The time-step, the matlab visualization should be
+	  done for
+	- pg = string, optional: The comsol plotgroup the visualization should be done
+	  for, in general irrelevant due to automatic change of all plotgroups
+
+So in general calling
+	
+	IRT.visualize(model,solutions,i)
+
+where i is the number of the solution you want to visualize, is sufficient.
+
+3. Be happy!
+
+THE PARAMETERFILE
+-----------------
+
+It follows a short description of the parameterfile 
+
+	parameterIRT.py 	
+
+which is created by the IRTDiscSimple.compute() function:
+
+- The commands creating the parameter file are contained in lines 262-308 of
+  IRTDiscSimple.m
+- The parameterfile is a python source file and therefore consists out of
+  python dictionaries and lists, in detail:
+
+	- matfile =  {"MatrixName":("/path/to/MatrixFile.mat",["ParameterName"],[ParameteRange]),...}
+	 
+	  Gives each matrix of the affine decomposition as well as the corresponding parameter with its desired range.
+
+	- stiffNames=("StiffnissMatrixName1',...)
+
+	  Gives the names of the stiffness matrices within the matfile dict
+
+	- rhsNames=("RhsName1",...)
+
+	  Gives the names of the rhs/load vectors within the matfile dict
+
+	- massNames=("MassName1",...)
+
+	  Gives the names of the mass matrices within the matfile dict
+
+	- u0file={"u0Name": "/path/to/u0.mat"}
+
+	  Gives the name and path of the saved inital solution
+
+	- parameterSetFile ={"parameterSetName": "/path/to/parameter_set.mat"}
+
+	  Gives the name and path of the saved parameter set
+
+- All objects described above HAVE to be provided, such that the python implementation can destinguish between the right matrices
+
+- Each name of the a matrix/vector etc. HAS to be the same as the matlab name/tag of the matrix/vector when saving it to the harddisc as a .mat file 
+
+SAVING AND LOADING
+------------------
+
+After constructing a reduced basis and a corresponding reconstructor these object are saved onto the harddisk via pyMOR-pickle methods. When doing so an entry is written into the sign.txt file in this folder, which consists of the names of already saved reduced objects. These names depend on the given matrices, the given total number of dofs, endtime, stepsize, sample number and number of basis extensions. 
+
+Each time the startIRT.py is called again, there will be a check if this object was called with the same parameters before. In that case the already provided objects are loaded and not constructed again (which makes sense due to a desired fast online stage). 
+
+There is a similar check in the IRTDiscSimple.m file, which simply checks for the given matrix names and the total number of dofs already used. Then the extracted matrices are not saved redundantly. 
+
+So far this signature check does not take changing dirichlet values into account. So if you change them and accordingly want to construct a new reduced basis, you can call the clean script in this folder, which deletes all saved RB-objects and the sign.txt file.
+
+MODULE-DEPENDENCIES AND PERSPECTIVES
+-----------------------------------
+
+Not taking the .m files in the comatmor/IRT folder into account, the startIRTRB.py script (and therefore the IRTRB object providing reduced basis computations) depend only on the following input data and commands:
+
+	- Desired matrices and vectors as .mat files, specified in the parameterIRT.py file
+	
+	- Given -linear- parameter dependencies specified in the parameterIRT.py file
+	
+	- Desired endtime T, stepsize n and others, provided as command line arguments for the startIRTRB.py script (otherwise there are set to
+default values)
+
+Therefore the given interfaces in terms of using the startIRTRB.py script can just be called with the given, described objects. Consequently the code can be easily extended to be used for other problems and interfacing programs. The read-in of other than .mat files can be implemented easily when having appropriate scipy methods in mind (see comminterface.py)
+
+
+HOW AND WHERE TO MAKE CHANGES
+-----------------------------
+
+When you are interested in applying the given implementations for other than
+just the simpleIRT.mph model you will have to check the SETUP steps from above
+again, especially when it comes to dirichlet values, which strongly depend on
+your problem.
+
+First be sure about the parameters and parameter ranges you want to alter and in which domains of your problem they are active. See lines 27-33 to see an example how to do it.
+
+You will have to modify the affine decomposition, which is done in lines
+130-240. The key idea is to insert the name of your featured equations, e.g.
+'hteq1', in the set methods, which set the parameters accordingly in the
+comsol model to construct the system matrices.
+
+E.g. you have a domain represented by 'hteq2', which you want
+to vary the parameters for. You will have to set the parameters of all other domains to 0 to just isolate the right matrix entries. Then the matrices are loaded, the corresponding dirichlet constraints are applied and redundant parameter-independent entries are eliminated. In the same manner the matrices of the constant domains are extracted (by setting the parameters for 'hteq2' to 0).
+
+For a new problem extend this procedure, so it fits to your requirements. Very
+important is then to alter the parameterfile accordingly. Therefore see lines
+245 to 252, which are quiet self-explainetory. Do not forget to introduce a
+parameter for EACH matrix, even if you have a constant one. Then just use a
+parameter e.g. 'k' with parameter range '(1,1)' for such matrices and vectors.
+
+Alter your parameter_set accordingly. NOTE that the order in the parameter_set
+has to be alphabetically in respect to the parameter names!

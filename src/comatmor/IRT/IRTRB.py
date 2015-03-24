@@ -74,6 +74,10 @@ class IRTRB(object):
 		self._rc = None
 		# Default
 		self._save = False
+		# Desired endtime of time-stepping
+		self._T = 0
+		# Number of timesteps
+		self._steps = 0
 		
 		# for inputmethod = disc call all necessary get-functions
 		if self._type == 'disc':
@@ -229,12 +233,23 @@ class IRTRB(object):
 				u = self._rd.solve(mu)
 				# Use data function to transform NumpyVectorArray to standard NumpyArra             			# Have to define valid matlab variable names
 				solutions['mu'+str(i)]=(self._rc.reconstruct(u)).data
-				for k in range(len(solutions['mu'+str(i)][0])):
-					if k+1 in L:
-						solutions['mu'+str(i)][0][k] = float(values[0][1])				
-						for j in range(1,len(solutions['mu'+str(i)])):
-	        	        	                solutions['mu'+str(i)][j][k] = float(values[j-1][1])				
-			#save solutions to disk
+				
+				# Add default dirichlet values to the solution
+				t = 0.0
+				dt = float(self._T)/float(self._steps);
+    				# Imply Dirichlet - will be linearly interpolated when time values do not match
+				for j in range(0,len(solutions['mu'+str(i)])):
+        				for k in range(1,len(values)):
+			                	if t >= float(values[k-1][0]) and t <= float(values[k][0]):
+                        				diriValue = float(values[k-1][1]) + (float(values[k][1]) - float(values[k-1][1]))/(float(values[k][0])-float(values[k-1][0]))*(t-float(values[k-1][0]))
+			                        	break
+
+					for l in range(len(solutions['mu'+str(i)][j])):
+						if l+1 in L:
+							solutions['mu'+str(i)][j][l] = diriValue	
+					t += dt
+
+			# save solutions to disk
 			self._CI.writeSolutions(solutions,file)
 			
 	def getRB(self):

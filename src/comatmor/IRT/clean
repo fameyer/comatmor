@@ -1,0 +1,4 @@
+# Delete saved RB objects
+rm sign.txt
+rm IRT_*
+echo 'Cleaned up and deleted saved reduced basis!'

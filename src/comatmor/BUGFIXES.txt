@@ -1,0 +1,7 @@
+- the use of 'from pymor.la.numpyvectorarray import NumpyVectorArray' in
+  comminterface.py is deprecated for newer pymor versions, then an 
+  assertion error in respect to 'assert U in self.source' occurs 
+	
+  Change it to 'from pymor.vectorarrays.numpy import NumpyVectorArray', when
+  it occurs
+

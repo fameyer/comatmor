@@ -35,7 +35,7 @@ from pymor.parameters.base import ParameterType
 from pymor.parameters.base import Parameter
 
 from pymor.la.numpyvectorarray import NumpyVectorArray
-
+#from pymor.vectorarrays.numpy import NumpyVectorArray
 from pymor.operators.numpy import NumpyMatrixOperator
 from pymor.operators.constructions import LincombOperator, VectorFunctional
 

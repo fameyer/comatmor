@@ -41,6 +41,14 @@ from pymor.algorithms.basisextension import gram_schmidt_basis_extension
 from pymor.algorithms.basisextension import pod_basis_extension
 #from pymor.algorithms.timestepping import ImplicitEulerTimeStepper
 
+# for Output
+from pymor.core import logger
+logger.MAX_HIERACHY_LEVEL = 2
+logger.set_log_levels({'pymor.algorithms': 'INFO',
+                       'pymor.discretizations': 'INFO',
+                       'pymor.la': 'INFO',
+                       'pymor.reductors': 'INFO'})
+
 from timestepping import ImplicitEulerTimeStepper
 
 from pymor.core.pickle import dump, load

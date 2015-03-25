@@ -58,7 +58,7 @@ end
 % set parameter_set and write it to disc
 % parameter structure: [c,da,k] k==1.0 
 if (~exist('parameter_set','var'))
-    parameter_set = [[40.0,20.0,1.0];[1.0,40.0,1.0]]; % Distinction by semicolon!
+    parameter_set = [[40.0,20.0,1.0];[1.0,1.0,1.0]]; % Distinction by semicolon!
 end
 
 save('parameter_set.mat','parameter_set')
@@ -233,7 +233,7 @@ save('K.mat', 'K');
 save('L.mat', 'L');
 save('D.mat', 'D');
 
-% Go to non-singular problem
+% Go to non-singular problem in comsol
 modelPhysics.feature('hteq2').set(parameterStiff,1);
 modelPhysics.feature('hteq2').set(parameterMass,1);
 
@@ -298,7 +298,7 @@ for i=1:length(massNames)
     fprintf(paramFile,',');
 end
 fprintf(paramFile,')\n');
-%u0file
+
 fprintf(paramFile,['u0file={',u0Name,':',u0Path,'}\n']);
 %parameterSetfile
 fprintf(paramFile,['parameterSetfile={',parameterName,':',parameterPath,'}']);

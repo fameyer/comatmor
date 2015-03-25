@@ -94,7 +94,7 @@ def implicit_euler(A, F, M, U0, t0, t1, nt, mu=None, invert_options=None, num_va
     U = U0.copy()
 
     # read values of dirichlet function
-    f=open('/home/310191226/pymorDir/comatmor/src/comatmor/IRT/dirichlet.csv')
+    f=open('dirichlet.csv')
     values = [];
     for row in csv.reader(f,delimiter=','):
 	values.append(row)	

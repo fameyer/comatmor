@@ -54,7 +54,7 @@ def startIRTRB(args):
 	T = float(args['--endtime'] or 5)
 	step_number = int(args['--steps'] or 20)
 	num_samples = int(args['--samples'] or 4)
-	max_extensions = int(args['--max_extensions'] or 30)
+	max_extensions = int(args['--max_extensions'] or 10)
 	target_error = float(args['--target_error'] or 1e-10)
 	# create stationRB object
 	rb = IRTRB(inputmethod = 'disc')

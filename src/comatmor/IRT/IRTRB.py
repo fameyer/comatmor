@@ -110,7 +110,7 @@ class IRTRB(object):
 
 	def getMatrix(self):
 		"""
-		Namen umbenennen vermoege besseren Wissens!
+		Insert matrix from harddisc
 		"""
 		return self._CI.getMat()
 
@@ -131,7 +131,7 @@ class IRTRB(object):
 
 	def constructRB(self, num_samples = 10, T=0, steps=0, max_extensions = 30, target_error =1e-10):
 		"""
-		Construct reduced basis with end-time T and number of steps n
+		Construct reduced basis with end-time T and number of steps steps
 		"""
 		print('Constructing reduced basis...')
 	
@@ -206,8 +206,7 @@ class IRTRB(object):
 
 	def compute(self, parameter_set=None, error=False, file=None):
 		"""
-		Think about error estimators and parameters etc etc
-		Compute rb solutions for parameter set - with errors?
+		Compute rb solutions for parameter_set
 		"""
 		# assert right set structure
 		assert isinstance(parameter_set,np.ndarray) or isinstance(parameter_set, list) or parameter_set == None

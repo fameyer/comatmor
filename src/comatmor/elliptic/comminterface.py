@@ -38,7 +38,7 @@ from pymor.operators.numpy import NumpyMatrixOperator
 from pymor.operators.constructions import LincombOperator
 
 # make that NICER
-from comatmor.elliptic import parameterHeateq as parameter
+from comatmor.elliptic import parameter
 
 class comminterface(object):
 	"""
@@ -133,19 +133,19 @@ class comminterface(object):
 			rhsPops.append(matDict[0][key][1])
 		stiffOp = LincombOperator(stiffOps, coefficients=stiffPops)
 		rhsOp = LincombOperator(rhsOps,coefficients=rhsPops)
+		
 		return stiffOp, rhsOp
 
 		def getMat(self):
 			"""
-			DOC ME
+			Return matrix dictionary
 			"""
 			return self._matDict
 		
 		def pushRhs(self):
 			"""
-			DOC ME
+			Insert Right-Hand side vector from harddisk
 			"""
-			# do that better without for-loop
 			if self._type == 'disc':
 				for key in parameter.rhsfile:
 					print 'Reading rhs...'
@@ -178,9 +178,9 @@ class comminterface(object):
 			else:
 				io.savemat(file,u)
 
-		def getTrainingSet(self):
+		def getParameterSet(self):
                 	"""
-                	Read training-set from disc
+                	Read parameter-set from disc
                 	"""
                 	if self._type == 'disc':
                         	for key in parameter.trainingSetfile:
@@ -190,3 +190,50 @@ class comminterface(object):
                				return [tuple(training_set[i]) for i in range(0,len(training_set))]
                 	else:
                         	pass
+
+
+		def getSignature(self, num_samples, max_extensions):
+			"""
+			Construct signature for given RB object
+			"""
+			print 'Generating signature...'
+			# create signature
+			sig = 'IRT'
+			dim = 0
+			for key in self._matDict[0]:
+				if dim == 0:
+					dim = self._matDict[0][key][0].shape[0]
+				sig = sig+'_'+key
+			sig = sig+'_'+str(dim)
+			sig = sig+'_'+str(num_samples)
+			sig = sig+'_'+str(max_extensions)
+			return sig
+
+		def saveSignature(self, file, signature):
+			"""
+			Save signature for underlying object
+			"""
+			print 'Writing new signature to file...'
+			e = open(file,'a')
+			e.write(signature+'\n')
+			e.close()
+
+		def checkSignature(self, file, signature):
+			"""
+			Check if given signature has already been saved
+			"""
+			try:
+				print 'Checking signature...'
+				e = open(file,'r')
+				contents = e.readlines()
+				# check if signature already given
+				for i in contents:
+					if i == signature+'\n':
+						e.close()
+						return True
+				# No signature found
+				e.close()
+				return False
+			except:
+				print 'No signature file found...'
+				return False     

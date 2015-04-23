@@ -24,13 +24,17 @@
 """startRB
 
 Usage:
-  startHeatRB.py [--samples=SAMPLES]
+  startHeatRB.py [--samples=SAMPLES] [--max_extensions=MAXE] [--target_error=ERROR]
 
 Arguments:
   None
 
 Options:
-  --samples=SAMPLES     Number of sample parameters, the reduced basis shall be constructed for
+  --samples=SAMPLES    	Number of sample parameters, the reduced basis shall be constructed for
+
+  --max_extensions=MAX	MAX number of basis extensions in the reduced basis construction
+
+  --target_error=ERROR  Target error to reach during reduced basis construction
 
 """
 
@@ -43,12 +47,14 @@ def startRB(args):
 	DOC ME
 	"""
 	num_samples = int(args['--samples'] or 10)
+	max_extensions = int(args['--max_extensions'] or 30)
+	target_error = float(args['--target_error'] or 1e-10)
 
 	# create stationRB object
 	rb = ellipticRB(inputmethod = 'disc')
 			
 	# compute rb solution
-	rb.constructRB(num_samples)
+	rb.constructRB(num_samples, max_extensions, target_error)
 
 	rb.compute()
 

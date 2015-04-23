@@ -34,8 +34,8 @@ from pymor.parameters.functionals import ExpressionParameterFunctional
 from pymor.parameters.base import ParameterType
 from pymor.parameters.base import Parameter
 
-from pymor.la.numpyvectorarray import NumpyVectorArray
-#from pymor.vectorarrays.numpy import NumpyVectorArray
+#from pymor.la.numpyvectorarray import NumpyVectorArray
+from pymor.vectorarrays.numpy import NumpyVectorArray
 from pymor.operators.numpy import NumpyMatrixOperator
 from pymor.operators.constructions import LincombOperator, VectorFunctional
 
@@ -179,6 +179,7 @@ class comminterface(object):
 		       paramName = parameter.matfile[key][1]
                        name = paramName[0]
                        rhsPops.append(ExpressionParameterFunctional(name+'*_t', parameter_type=localtype))
+
 		stiffOp = LincombOperator(stiffOps, coefficients=stiffPops)
                 rhsOp = LincombOperator(rhsOps,coefficients=rhsPops)
 		massOp = LincombOperator(massOps, coefficients=massPops)
@@ -186,13 +187,13 @@ class comminterface(object):
 
 	def getMat(self):
 		"""
-		DOC ME
+		Return matrix dictionary		
 		"""
 		return self._matDict
 	
 	def pushRhs(self):
 		"""
-		DOC ME
+		Insert Right-Hand side vector from harddisk
 		"""
 		if self._type == 'disc':
 			# do that better without for-loop

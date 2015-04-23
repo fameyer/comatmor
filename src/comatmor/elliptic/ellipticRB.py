@@ -17,7 +17,7 @@
 #===========================================================================
 
 # Class to apply pymor RB on an elliptic PDE
-# by Falk Meyer, 10.02.2015
+# by Falk Meyer, 23.04.2015
 
 import pickle
 import time
@@ -93,22 +93,9 @@ class ellipticRB(object):
 
 	def getMatrix(self):
 		"""
-		Namen umbenennen vermoege besseren Wissens!
+		Insert matrix from harddisc
 		"""
 		return self._CI.getMat()
-
-	# DEPRECATED
-	#def addRhs(self, rhs=None):
-	#	"""
-	#	DOC ME
-	#	"""
-	#	# also assert right dimension?
-	#	if rhs != None:
-	#		assert isinstance(rhs, np.ndarray)
-	#		self._rhs = NumpyMatrixOperator(rhs)
-	#	else:
-	#		# try to get rhs from matDictionary(has to be transposed!)
-	#		self._rhs = NumpyMatrixOperator(self._CI.pushRhs().T)
 
 	def getRhs(self):
 		"""
@@ -116,43 +103,19 @@ class ellipticRB(object):
 		"""
 		return self._rhs
 
-	# moved to comminterface
-        #def assembleOperators(self):
-        #        """
-        #        Assemble operators to be prepared for RB calculations 
-        #        """
-        #        matDict = self._matDict
-	#
-        #        # Create lincomboperator for all involved matrices
-        #        stiffOps, rhsOps, stiffPops, rhsPops = [], [], [], []
-        #        # maybe improve method below - put it somewhere else prob. !!!
-        #        # get stiffness matrices and rhs matrices
-        #        for key in parameter.stiffNames:
-        #        #for key in matDict[0]:
-        #                stiffOps.append(NumpyMatrixOperator(matDict[0][key][0]))
-        #                stiffPops.append(matDict[0][key][1])
-        #        for key in parameter.rhsNames:
-	#		print(matDict[0][key][0].dtype)
-        #                rhsOps.append(NumpyMatrixOperator(matDict[0][key][0].T))
-        #                rhsPops.append(matDict[0][key][1])
-        #        stiffOp = LincombOperator(stiffOps, coefficients=stiffPops)
-        #        rhsOp = LincombOperator(rhsOps,coefficients=rhsPops)
-        #        return stiffOp, rhsOp
-
-
-	def constructRB(self, num_samples = 10):
+	def constructRB(self, num_samples = 10, max_extensions = 30, target_error=1e-10):
 		"""
-		TO DO: add possibility to change basis extension for instance
+	 	Construct reduced basis
 		"""
-		print 'Constructing reduced basis...' 
+		print('Constructing reduced basis...')
 
                 # check if reduced basis was already constructed before, then load it before contructing a new one
                 if self._save:
-                        signature = self._CI.getSignature(num_samples, steps, T)
+                        signature = self._CI.getSignature(num_samples, max_extensions)
                         if self._CI.checkSignature(self._signFile,signature):
                                 with open(signature,'r') as f:
                                         self._rd, self._rc = load(f)
-                                        print 'Reduced basis and reconstructor already computed before, loading...'
+                                        print('Reduced basis and reconstructor already computed before, loading...')
                                         return
 
 
@@ -161,10 +124,6 @@ class ellipticRB(object):
 
 		paramTypes  = self._matDict[1]
 		paramRanges = self._matDict[2]
-	
-		#print self._rhs._matrix
-		#io.savemat('pyrhs',{'pyrhs': rhsOp.assemble((4,2))._matrix})	
-		#io.savemat('pyop',{'pyop': stiffOp.assemble((4,2))._matrix})	
 		
 		# create discretization
 		dis = StationaryDiscretization(operator=stiffOp, rhs=rhsOp)
@@ -194,8 +153,7 @@ class ellipticRB(object):
 
 	def compute(self, parameter_set=None, error=False, file=None):
 		"""
-		Think about error estimators and parameters etc etc
-		Compute rb solutions for parameter set - with errors?
+		Compute rb solutions for parameter_set
 		"""
 		# assert right set structure
 		assert isinstance(parameter_set,np.ndarray) or isinstance(parameter_set, list) or parameter_set == None
@@ -212,7 +170,7 @@ class ellipticRB(object):
                         assert parameter_set == None
 			print 'Computing solutions for given parameter set in respect to reduced basis...'
 
-			parameter_set = self._CI.getTrainingSet()
+			parameter_set = self._CI.getParameterSet()
 			solutions = {}
 			i = 0
 			# save solutions for all parameters	
@@ -229,12 +187,12 @@ class ellipticRB(object):
 			
 	def getRB(self):
 		"""
-		DOC ME
+		Return computed reduced basis
 		"""
 		return self._rb
 	
 	def __str__(self):
 		"""
-		Give detailed information about the class(which equation can be solved? etc.)
+		Information about the object
 		"""
-	
+		return 'Reduced basis method with greedy search basis generation for parametrized standard elliptic equation'	

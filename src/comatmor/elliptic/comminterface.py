@@ -136,104 +136,104 @@ class comminterface(object):
 		
 		return stiffOp, rhsOp
 
-		def getMat(self):
-			"""
-			Return matrix dictionary
-			"""
-			return self._matDict
-		
-		def pushRhs(self):
-			"""
-			Insert Right-Hand side vector from harddisk
-			"""
-			if self._type == 'disc':
-				for key in parameter.rhsfile:
-					print 'Reading rhs...'
-					return io.loadmat(parameter.rhsfile[key])[key]
-			else:
-				pass
+	def getMat(self):
+		"""
+		Return matrix dictionary
+		"""
+		return self._matDict
+	
+	def pushRhs(self):
+		"""
+		Insert Right-Hand side vector from harddisk
+		"""
+		if self._type == 'disc':
+			for key in parameter.rhsfile:
+				print 'Reading rhs...'
+				return io.loadmat(parameter.rhsfile[key])[key]
+		else:
+			pass
 
-		def readU0(self):
-			"""
-			Read initial solution for time-dependent problems
-			"""
-			if self._type == 'disc':
-				for key in parameter.u0file:
-					print 'Reading initial solution...'
-					return io.loadmat(parameter.u0file[key])[key]
-			else:
-				pass
+	def readU0(self):
+		"""
+		Read initial solution for time-dependent problems
+		"""
+		if self._type == 'disc':
+			for key in parameter.u0file:
+				print 'Reading initial solution...'
+				return io.loadmat(parameter.u0file[key])[key]
+		else:
+			pass
 
-		def writeSolutions(self, u, file=None):
-			"""
-			Write given u to disc
-			"""		
+	def writeSolutions(self, u, file=None):
+		"""
+		Write given u to disc
+		"""		
 
-			assert self._type == 'disc'
-			assert isinstance(u,dict) 
-		
-			# check if user-given filename is available, otherwise use default
-			if file == None:
-				io.savemat('RBsolutions',u)
-			else:
-				io.savemat(file,u)
+		assert self._type == 'disc'
+		assert isinstance(u,dict) 
+	
+		# check if user-given filename is available, otherwise use default
+		if file == None:
+			io.savemat('RBsolutions',u)
+		else:
+			io.savemat(file,u)
 
-		def getParameterSet(self):
-                	"""
-                	Read parameter-set from disc
-                	"""
-                	if self._type == 'disc':
-                        	for key in parameter.trainingSetfile:
-                                	print 'Obtain training_set...'
-                                	# transform to correct format
-                                	training_set = io.loadmat(parameter.trainingSetfile[key], mat_dtype=True)[key]
-               				return [tuple(training_set[i]) for i in range(0,len(training_set))]
-                	else:
-                        	pass
+	def getParameterSet(self):
+		"""
+		Read parameter-set from disc
+		"""
+		if self._type == 'disc':
+			for key in parameter.parameterSetfile:
+				print 'Obtain parameter_set...'
+				# transform to correct format
+				parameter_set = io.loadmat(parameter.parameterSetfile[key], mat_dtype=True)[key]
+				return [tuple(parameter_set[i]) for i in range(0,len(parameter_set))]
+		else:
+			pass
 
 
-		def getSignature(self, num_samples, max_extensions):
-			"""
-			Construct signature for given RB object
-			"""
-			print 'Generating signature...'
-			# create signature
-			sig = 'IRT'
-			dim = 0
-			for key in self._matDict[0]:
-				if dim == 0:
-					dim = self._matDict[0][key][0].shape[0]
-				sig = sig+'_'+key
-			sig = sig+'_'+str(dim)
-			sig = sig+'_'+str(num_samples)
-			sig = sig+'_'+str(max_extensions)
-			return sig
+	def getSignature(self, num_samples, max_extensions):
+		"""
+		Construct signature for given RB object
+		"""
+		print 'Generating signature...'
+		# create signature
+		sig = 'IRT'
+		dim = 0
+		for key in self._matDict[0]:
+			if dim == 0:
+				dim = self._matDict[0][key][0].shape[0]
+			sig = sig+'_'+key
+		sig = sig+'_'+str(dim)
+		sig = sig+'_'+str(num_samples)
+		sig = sig+'_'+str(max_extensions)
+		return sig
 
-		def saveSignature(self, file, signature):
-			"""
-			Save signature for underlying object
-			"""
-			print 'Writing new signature to file...'
-			e = open(file,'a')
-			e.write(signature+'\n')
+	def saveSignature(self, file, signature):
+		"""
+		Save signature for underlying object
+		"""
+		print 'Writing new signature to file...'
+		e = open(file,'a')
+		e.write(signature+'\n')
+		e.close()
+
+	def checkSignature(self, file, signature):
+		"""
+		Check if given signature has already been saved
+		"""
+		try:
+			print 'Checking signature...'
+			e = open(file,'r')
+			contents = e.readlines()
+			# check if signature already given
+			for i in contents:
+				if i == signature+'\n':
+					e.close()
+					return True
+			# No signature found
 			e.close()
-
-		def checkSignature(self, file, signature):
-			"""
-			Check if given signature has already been saved
-			"""
-			try:
-				print 'Checking signature...'
-				e = open(file,'r')
-				contents = e.readlines()
-				# check if signature already given
-				for i in contents:
-					if i == signature+'\n':
-						e.close()
-						return True
-				# No signature found
-				e.close()
-				return False
-			except:
-				print 'No signature file found...'
-				return False     
+			return False
+		except:
+			print 'No signature file found...'
+			return False     

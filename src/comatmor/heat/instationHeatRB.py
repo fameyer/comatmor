@@ -53,16 +53,16 @@ from comminterface import comminterface as CI
 
 class instationHeatRB(object):
 	"""
-	DOC ME
+	This is the class realizing input of saved matrices and communication with 
+	pyMOR to solve a parameterized heat equation.
 	"""
-	def __init__(self, name = 'RB on stationary problem', inputmethod = 'direct'):
+	def __init__(self, name = 'RB on instationary problem'):
 		"""
-		DOC ME
+		Constructor
 		"""
 		self._name = name
-		self._type = inputmethod
 		# communication interface
-		self._CI = CI(type = self._type)
+		self._CI = CI()
 		# mathematical objects
 		self._rhs = None
 		self._matDict = None
@@ -74,25 +74,21 @@ class instationHeatRB(object):
 		self._rd = None
 		# RB reconstructor
 		self._rc = None
-		# Default
-		self._save = False
-
-		# for inputmethod = disc call all necessary get-functions
-		if self._type == 'disc':
-			self.addMatrix()
-			self.getMass()
-			self.getU0()
-			# Bool to check whether saving is desired
-			self._save = True
-			# Given signature file
-			self._signFile = 'sign.txt'
+		
+		self.addMatrix()
+		self.getMass()
+		self.getU0()
+		# Bool to check whether saving is desired
+		self._save = True
+		# Given signature file
+		self._signFile = 'sign.txt'
 
 	def addMatrix(self, name=None, row=None, col=None, data=None, paramName=None, paramShape=None, paramRange=None):
 		"""
 		Add matrices to given instationHeatRB object - direct or by disc access
 		"""
 		# just call comminterface
-		self._CI.pushMat(name, row, col, data, paramName, paramShape, paramRange)
+		self._CI.pushMat()
 		self._matDict = self._CI.getMat()
 
 	def getMatrix(self):
@@ -111,20 +107,14 @@ class instationHeatRB(object):
 		"""
 		Read initial solution for time-stepping
 		"""
-		if self._type == 'disc':
-			self._u0 = NumpyMatrixOperator(self._CI.readU0())
-		else:
-			pass
-
+		self._u0 = NumpyMatrixOperator(self._CI.readU0())
+		
 	def getMass(self):
 		"""
 		Read mass matrix
 		"""
-		if self._type == 'disc':
-			self._mass = NumpyMatrixOperator(self._CI.readMass())
-		else:
-			pass
-
+		self._mass = NumpyMatrixOperator(self._CI.readMass())
+		
 	def constructRB(self, num_samples = 10, T=0, steps=0):
 		"""
 		Construct reduced basis with end-time T and number of steps n
@@ -200,32 +190,23 @@ class instationHeatRB(object):
 		"""
 		# assert right set structure
 		assert isinstance(parameter_set,np.ndarray) or isinstance(parameter_set, list) or parameter_set == None
-		if self._type == 'direct': 
-			# just supports return of one solution so far!!! Due to matlab restrictions - or glue them all together in the end and decompose them in matlab
-			for mu in parameter_set:
-				u = self._rd.solve(mu)
-				ur = self._rc.reconstruct(u)
-		
-				print ur
-				return ur	
-		if self._type == 'disc':
-			# Get parameter_set from disc
-		 	assert parameter_set == None	
-			print 'Computing solutions for given parameter set in respect to reduced basis...'
-			parameter_set = self._CI.getParameterSet()
-			solutions = {}
-			i = 0
-			# save solutions for all parameters	
-			for mu in parameter_set:
-				i=i+1
-				u = self._rd.solve(mu)
-				# Use data function to transform NumpyVectorArray to standard NumpyArray
-				# Have to define valid matlab variable names
-				# 'mu'+str(int(mu*100))
-				solutions['mu'+str(i)]=(self._rc.reconstruct(u)).data
+		# Get parameter_set from disc
+		assert parameter_set == None	
+		print 'Computing solutions for given parameter set in respect to reduced basis...'
+		parameter_set = self._CI.getParameterSet()
+		solutions = {}
+		i = 0
+		# save solutions for all parameters	
+		for mu in parameter_set:
+			i=i+1
+			u = self._rd.solve(mu)
+			# Use data function to transform NumpyVectorArray to standard NumpyArray
+			# Have to define valid matlab variable names
+			# 'mu'+str(int(mu*100))
+			solutions['mu'+str(i)]=(self._rc.reconstruct(u)).data
 				
 			# save solutions to disk
-			self._CI.writeSolutions(solutions,file)
+		self._CI.writeSolutions(solutions,file)
 			
 	def getRB(self):
 		"""

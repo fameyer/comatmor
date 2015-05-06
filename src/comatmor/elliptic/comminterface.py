@@ -42,77 +42,53 @@ from comatmor.elliptic import parameter
 
 class comminterface(object):
 	"""
-	DOC ME
+	Interface class providing methods for matrix/vector input
 	"""
-	def __init__(self, name="Interface for comatmor communications", type = 'direct'):
+	def __init__(self, name="Interface for comatmor communications"):
 		"""
-		DOC ME
+		Constructor
 		"""
 		self._name = name
 		self._matDict = ({}, ParameterType({}), {})
-		self._type = type
 
-	def pushMat(self, name=None, row=None, col=None, data=None, paramName=None, paramShape=None, paramRange=None):
+	def pushMat(self):
 		"""
-		DOC ME
+		Insert matrices from harddisc
 		"""
-		# Direct argument call
-		if self._type == 'direct':
+		# Call by harddisc access	
+		for key in parameter.matfile:
+
+			# Obtain information from the parameter file
+			paramName = parameter.matfile[key][1]
+			paramShape = parameter.matfile[key][2]
+			paramRange = parameter.matfile[key][3]
 			
-			# check for correct data types
-			assert isinstance(row, np.ndarray)
-			assert isinstance(col, np.ndarray)
-			assert isinstance(data, np.ndarray)
-
-			# check for all input arguments
-			assert not isinstance(paramName,None)
-			assert not isinstance(paramShape,None)
-			assert not isinstance(paramSpace,None)
-
-			# get dimension of system
-			dim = row.max()+1 if row.max() > col.max() else col.max()+1
-
-			# transform to scipymatrix
-			matrix = csc_matrix((data,(row,col)),shape=(dim,dim))
-
-			# create parameterfunctional
-			paramType = ParameterType({ paramName: paramShape})
-			paramFunc = GenericParameterFunctional(lambda mu: mu[paramName], parameter_type = paramType)
-			# save matrix to dic
-			self._matDict[0][name]=(matrix, paramFunc)
-				
-			# Update of parametertypes and ranges
-			self._matDict[1][paramName]=paramType[paramName]
-			self._matDict[2][paramName]=paramRange
-
-		# Call by harddisc access
-		if self._type == 'disc':
-		
-	                for key in parameter.matfile:
-
-				# Obtain information from the parameter file
-				paramName = parameter.matfile[key][1]
-				paramShape = parameter.matfile[key][2]
-				paramRange = parameter.matfile[key][3]
-				
+			# Distinguish between isotropic and anisotropic parameters
+			if len(paramName) == 1:
 				# assert linear, scalar parameterdependence
-				assert len(paramName)== 1
-			
+				assert len(paramShape)== 1
+				
 				# If just one scalar parameter given, we have to correct due to sparse scipy matrices
 				paramType = ParameterType({ paramName[0]: 0})
-					
-	                 	print 'Reading '+key+'...'
+				
+				print 'Reading '+key+'...'
 				# add parametertypes and parameterRanges
 
 				self._matDict[1][paramName[0]] = paramType[paramName[0]]
 				self._matDict[2][paramName[0]] = paramRange[0]
+			else:
+				assert len(paramShape)==len(paramName)
+				for i in range(len(paramShape)):
+					self._matDict[1][paramName[i]] = 0
+					self._matDict[2][paramName[i]] = paramRange[i]
 
-			for key in parameter.matfile:
-				paramName = parameter.matfile[key][1]
-				print 'Reading parameter: '+paramName[0]
-				name = paramName[0]
-				paramFunc = GenericParameterFunctional(lambda mu, name=name: mu[name], parameter_type = self._matDict[1])
-				self._matDict[0][key] = (io.loadmat(parameter.matfile[key][0],mat_dtype=True)[key],paramFunc) 
+		for key in parameter.matfile:
+
+			paramName = parameter.matfile[key][1]
+			print 'Reading parameter: '+paramName[0]
+			name = paramName[0]
+			paramFunc = GenericParameterFunctional(lambda mu, name=name: mu[name], parameter_type = self._matDict[1])
+			self._matDict[0][key] = (io.loadmat(parameter.matfile[key][0],mat_dtype=True)[key],paramFunc) 
 
         def assembleOperators(self):
                 """
@@ -145,31 +121,23 @@ class comminterface(object):
 	def pushRhs(self):
 		"""
 		Insert Right-Hand side vector from harddisk
-		"""
-		if self._type == 'disc':
-			for key in parameter.rhsfile:
-				print 'Reading rhs...'
-				return io.loadmat(parameter.rhsfile[key])[key]
-		else:
-			pass
-
+		"""		
+		for key in parameter.rhsfile:
+			print 'Reading rhs...'
+			return io.loadmat(parameter.rhsfile[key])[key]	
+	
 	def readU0(self):
 		"""
 		Read initial solution for time-dependent problems
 		"""
-		if self._type == 'disc':
-			for key in parameter.u0file:
-				print 'Reading initial solution...'
-				return io.loadmat(parameter.u0file[key])[key]
-		else:
-			pass
+		for key in parameter.u0file:
+			print 'Reading initial solution...'
+			return io.loadmat(parameter.u0file[key])[key]
 
 	def writeSolutions(self, u, file=None):
 		"""
 		Write given u to disc
 		"""		
-
-		assert self._type == 'disc'
 		assert isinstance(u,dict) 
 	
 		# check if user-given filename is available, otherwise use default
@@ -182,14 +150,11 @@ class comminterface(object):
 		"""
 		Read parameter-set from disc
 		"""
-		if self._type == 'disc':
-			for key in parameter.parameterSetfile:
-				print 'Obtain parameter_set...'
-				# transform to correct format
-				parameter_set = io.loadmat(parameter.parameterSetfile[key], mat_dtype=True)[key]
-				return [tuple(parameter_set[i]) for i in range(0,len(parameter_set))]
-		else:
-			pass
+		for key in parameter.parameterSetfile:
+			print 'Obtain parameter_set...'
+			# transform to correct format
+			parameter_set = io.loadmat(parameter.parameterSetfile[key], mat_dtype=True)[key]
+			return [tuple(parameter_set[i]) for i in range(0,len(parameter_set))]
 
 
 	def getSignature(self, num_samples, max_extensions):

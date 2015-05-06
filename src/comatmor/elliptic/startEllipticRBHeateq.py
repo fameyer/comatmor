@@ -51,7 +51,7 @@ def startRB(args):
 	target_error = float(args['--target_error'] or 1e-10)
 
 	# create stationRB object
-	rb = ellipticRB(inputmethod = 'disc')
+	rb = ellipticRB()
 			
 	# compute rb solution
 	rb.constructRB(num_samples, max_extensions, target_error)

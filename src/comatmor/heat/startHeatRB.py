@@ -50,7 +50,7 @@ def startHeatRB(args):
 	step_number = int(args['--steps'] or 10)
 	num_samples = int(args['--samples'] or 10)
 	# create stationRB object
-	rb = instationHeatRB(inputmethod = 'disc')
+	rb = instationHeatRB()
 			
 	# construct RB basis for num_samples in parameterspace, n steps and end-time T
 	rb.constructRB(num_samples,T,step_number)

@@ -57,7 +57,7 @@ def startIRTRB(args):
 	max_extensions = int(args['--max_extensions'] or 10)
 	target_error = float(args['--target_error'] or 1e-10)
 	# create stationRB object
-	rb = IRTRB(inputmethod = 'disc')
+	rb = IRTRB()
 			
 	# construct RB basis for num_samples in parameterspace, n steps and end-time T
 	rb.constructRB(num_samples,T,step_number, max_extensions, target_error)

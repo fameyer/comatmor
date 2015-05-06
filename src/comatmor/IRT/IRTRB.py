@@ -59,16 +59,16 @@ from comminterface import comminterface as CI
 
 class IRTRB(object):
 	"""
-	DOC ME
+        This is the class realizing input of saved matrices and communcation with 
+        pyMOR to solve the simplified IRT model.
 	"""
-	def __init__(self, name = 'RB on stationary problem', inputmethod = 'direct'):
+	def __init__(self, name = 'RB on stationary problem'):
 		"""
-		DOC ME
+		Constructor
 		"""
 		self._name = name
-		self._type = inputmethod
 		# communication interface
-		self._CI = CI(type = self._type)
+		self._CI = CI()
 		# mathematical objects
 		self._rhs = None
 		self._matDict = None
@@ -80,32 +80,28 @@ class IRTRB(object):
 		self._rd = None
 		# RB reconstructor
 		self._rc = None
-		# Default
-		self._save = False
 		# Desired endtime of time-stepping
 		self._T = 0
 		# Number of timesteps
-		self._steps = 0
-		
+		self._steps = 0	
 		# for inputmethod = disc call all necessary get-functions
-		if self._type == 'disc':
-			self.addMatrix()
-			self.getU0()
-			# Bool to check whether saving is desired
-			self._save = True
-			# Given signature file
-			self._signFile = 'sign.txt'
-			# Get dirichlet indices
-			self._dirichletIndex = self._CI.getDirichletIndex()
-			# Get dirichlet values over time
-			self._dirichletValues = self._CI.getDirichletValues()
+		self.addMatrix()
+		self.getU0()
+		# Bool to check whether saving is desired
+		self._save = True
+		# Given signature file
+		self._signFile = 'sign.txt'
+		# Get dirichlet indices
+		self._dirichletIndex = self._CI.getDirichletIndex()
+		# Get dirichlet values over time
+		self._dirichletValues = self._CI.getDirichletValues()
 
-	def addMatrix(self, name=None, row=None, col=None, data=None, paramName=None, paramShape=None, paramRange=None):
+	def addMatrix(self):
 		"""
 		Add matrices to given instationHeatRB object - direct or by disc access
 		"""
 		# just call comminterface
-		self._CI.pushMat(name, row, col, data, paramName, paramShape, paramRange)
+		self._CI.pushMat()
 		self._matDict = self._CI.getMat()
 
 	def getMatrix(self):
@@ -124,11 +120,8 @@ class IRTRB(object):
 		"""
 		Read initial solution for time-stepping
 		"""
-		if self._type == 'disc':
-			self._u0 = NumpyMatrixOperator(self._CI.readU0())
-		else:
-			pass
-
+		self._u0 = NumpyMatrixOperator(self._CI.readU0())
+		
 	def constructRB(self, num_samples = 10, T=0, steps=0, max_extensions = 30, target_error =1e-10):
 		"""
 		Construct reduced basis with end-time T and number of steps steps
@@ -210,54 +203,44 @@ class IRTRB(object):
 		"""
 		# assert right set structure
 		assert isinstance(parameter_set,np.ndarray) or isinstance(parameter_set, list) or parameter_set == None
-		assert not self._rd is None and not self._rc is None
+		assert not self._rd is None and not self._rc is None	
+		# Get parameter_set from disc
+		assert parameter_set == None	
+		print('Computing solutions for given parameter set in respect to reduced basis...')
+		parameter_set = self._CI.getParameterSet()
+		solutions = {}
+		i = 0
 
-		if self._type == 'direct': 
-			# just supports return of one solution so far!!! Due to matlab restrictions - or glue them all together in the end and decompose them in matlab
-			for mu in parameter_set:
-				u = self._rd.solve(mu)
-				ur = self._rc.reconstruct(u)
-		
-				return ur	
+		# Open files to get right dirichlet values
+		values = self._dirichletValues
 
-		if self._type == 'disc':
-			# Get parameter_set from disc
-		 	assert parameter_set == None	
-			print('Computing solutions for given parameter set in respect to reduced basis...')
-			parameter_set = self._CI.getParameterSet()
-			solutions = {}
-			i = 0
+		L = self._dirichletIndex
+		lenl = len(L)
 
-			# Open files to get right dirichlet values
-			values = self._dirichletValues
+		# save solutions for all parameters	
+		for mu in parameter_set:
+			i=i+1
+			u = self._rd.solve(mu)
+			# Use data function to transform NumpyVectorArray to standard NumpyArra             			# Have to define valid matlab variable names
+			solutions['mu'+str(i)]=(self._rc.reconstruct(u)).data
+			
+			# Add default dirichlet values to the solution
+			t = 0.0
+			dt = float(self._T)/float(self._steps);
+			# Imply Dirichlet - will be linearly interpolated when time values do not match
+			for j in range(0,len(solutions['mu'+str(i)])):
+				for k in range(1,len(values)):
+					if t >= float(values[k-1][0]) and t <= float(values[k][0]):
+						diriValue = float(values[k-1][1]) + (float(values[k][1]) - float(values[k-1][1]))/(float(values[k][0])-float(values[k-1][0]))*(t-float(values[k-1][0]))
+						break
 
-			L = self._dirichletIndex
-               		lenl = len(L)
+				for l in range(len(solutions['mu'+str(i)][j])):
+					if l+1 in L:
+						solutions['mu'+str(i)][j][l] = diriValue	
+				t += dt
 
-			# save solutions for all parameters	
-			for mu in parameter_set:
-				i=i+1
-				u = self._rd.solve(mu)
-				# Use data function to transform NumpyVectorArray to standard NumpyArra             			# Have to define valid matlab variable names
-				solutions['mu'+str(i)]=(self._rc.reconstruct(u)).data
-				
-				# Add default dirichlet values to the solution
-				t = 0.0
-				dt = float(self._T)/float(self._steps);
-    				# Imply Dirichlet - will be linearly interpolated when time values do not match
-				for j in range(0,len(solutions['mu'+str(i)])):
-        				for k in range(1,len(values)):
-			                	if t >= float(values[k-1][0]) and t <= float(values[k][0]):
-                        				diriValue = float(values[k-1][1]) + (float(values[k][1]) - float(values[k-1][1]))/(float(values[k][0])-float(values[k-1][0]))*(t-float(values[k-1][0]))
-			                        	break
-
-					for l in range(len(solutions['mu'+str(i)][j])):
-						if l+1 in L:
-							solutions['mu'+str(i)][j][l] = diriValue	
-					t += dt
-
-			# save solutions to disk
-			self._CI.writeSolutions(solutions,file)
+		# save solutions to disk
+		self._CI.writeSolutions(solutions,file)
 			
 	def getRB(self):
 		"""
